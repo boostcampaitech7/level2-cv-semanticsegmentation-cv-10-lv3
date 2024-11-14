@@ -26,20 +26,21 @@ from model import *
 # model name
 # fcn, unet(unetpp), deeplabv3p
 
-
 ############## PARSE ARGUMENT ########################
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name",      type=str,   default="deeplabv3p")
+    parser.add_argument("--model_name",      type=str,   default="unet")
     parser.add_argument("--tr_batch_size",   type=int,   default=4)
     parser.add_argument("--val_batch_size",  type=int,   default=1)
-    parser.add_argument("--val_every",       type=int,   default=5)
+    parser.add_argument("--val_every",       type=int,   default=10)
     parser.add_argument("--threshold",       type=float, default=0.5)
     parser.add_argument("--lr",              type=float, default=1e-4)
     parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="fnc_base.pt")
+    parser.add_argument("--pt_name",         type=str,   default="unetPP_adamW.pt")
 
     args = parser.parse_args()
     return args
@@ -71,7 +72,6 @@ tf = A.Compose([
     # A.ElasticTransform(p=0.2),
     # A.Sharpen()
 ])
-
 
 ############### Dataset ###############
 train_dataset = XRayDataset(is_train=True, transforms=tf, fold=FOLD)
@@ -119,8 +119,16 @@ def set_seed():
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
+# print 파일 기록하기 위한 함수
+
+
+def log_to_file(message, file_path="./log/train_log.txt"):
+    with open(file_path, "a") as f:
+        f.write(message + "\n")
 
 ############### TRAIN ###############
+
+
 def train(model, data_loader, val_loader, criterion, optimizer):
     print(f'Start training..')
 
@@ -152,19 +160,25 @@ def train(model, data_loader, val_loader, criterion, optimizer):
             optimizer.step()
 
             if (step + 1) % 25 == 0:
-                print(
+                log_message = (
                     f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
                     f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
-                    f'Step [{step+1}/{len(train_loader)}], '
+                    f'Step [{step+1}/{len(data_loader)}], '
                     f'Loss: {round(loss.item(),4)}'
                 )
+                print(log_message)
+                log_to_file(log_message)
 
         if (epoch + 1) % VAL_EVERY == 0:
             dice = validation(epoch + 1, model, val_loader, criterion)
 
             if best_dice < dice:
-                print(f"Best performance at epoch: {epoch + 1}, {best_dice:.4f} -> {dice:.4f}")
-                print(f"Save model in {SAVED_DIR}")
+                log_message = (
+                    f"Best performance at epoch: {epoch + 1}, {best_dice:.4f} -> {dice:.4f}\n"
+                    f"Save model in {SAVED_DIR}"
+                )
+                print(log_message)
+                log_to_file(log_message)
                 best_dice = dice
                 save_model(model)
 
@@ -187,6 +201,8 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
             if MODEL.lower() == "fcn":
                 outputs = model(images)['out']
             elif MODEL.lower() == "unet":
+                outputs = model(images)
+            elif MODEL.lower() == "deeplabv3p":
                 outputs = model(images)
 
             output_h, output_w = outputs.size(-2), outputs.size(-1)
@@ -214,6 +230,7 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
     ]
     dice_str = "\n".join(dice_str)
     print(dice_str)
+    log_to_file(dice_str)
 
     avg_dice = torch.mean(dices_per_class).item()
 
@@ -225,8 +242,8 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
 # model
 # model = models.segmentation.fcn_resnet50(pretrained=True) # fcn base
 # model = UNet(num_classes=len(CLASSES)) # unet base
-# model = UNetPlusPlus(out_ch=len(CLASSES), supervision=False) # unet++ base
-model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES))  # deeplabv3p base
+model = UNetPlusPlus(out_ch=len(CLASSES), supervision=False)  # unet++ base
+# model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES)) # deeplabv3p base
 
 
 # output class 개수를 dataset에 맞도록 수정합니다.
@@ -239,8 +256,8 @@ criterion = nn.BCEWithLogitsLoss()  # fcn, unet, unet ++ base, deeplab3vp base
 
 # Optimizer
 # optimizer = optim.Adam(params=model.parameters(), lr=LR, weight_decay=1e-6) # fcn base
-# unet base, unet ++ base, deeplab3vp base
-optimizer = optim.RMSprop(params=model.parameters(), lr=LR, weight_decay=1e-6)
+# optimizer = optim.RMSprop(params=model.parameters(), lr=LR, weight_decay=1e-6) # unet base, unet ++ base, deeplab3vp base
+optimizer = optim.AdamW(params=model.parameters(), lr=LR, weight_decay=1e-5)
 
 # Set_seed
 set_seed()
