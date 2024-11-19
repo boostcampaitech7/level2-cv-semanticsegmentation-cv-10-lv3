@@ -1,0 +1,5 @@
+data/
+submissionhj/
+checkpoints/
+streamlit/
+*.pyc
