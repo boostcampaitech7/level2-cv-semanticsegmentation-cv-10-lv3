@@ -38,9 +38,11 @@ IND2CLASS = {v: k for k, v in CLASS2IND.items()}
 
 SAVED_DIR = "checkpoints"
 
+
 class UNet(nn.Module):
     def __init__(self, num_classes=len(CLASSES)):
         super(UNet, self).__init__()
+
         def CBR2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True):
             layers = []
             layers += [nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
@@ -71,26 +73,31 @@ class UNet(nn.Module):
 
         self.enc5_1 = CBR2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=1, bias=True)
         self.enc5_2 = CBR2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=1, bias=True)
-        self.unpool4 = nn.ConvTranspose2d(in_channels=1024, out_channels=512, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool4 = nn.ConvTranspose2d(in_channels=1024, out_channels=512,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec4_2 = CBR2d(in_channels=1024, out_channels=512, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec4_1 = CBR2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool3 = nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool3 = nn.ConvTranspose2d(in_channels=512, out_channels=256,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec3_2 = CBR2d(in_channels=512, out_channels=256, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec3_1 = CBR2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool2 = nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool2 = nn.ConvTranspose2d(in_channels=256, out_channels=128,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec2_2 = CBR2d(in_channels=256, out_channels=128, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec2_1 = CBR2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool1 = nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool1 = nn.ConvTranspose2d(in_channels=64, out_channels=64,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec1_2 = CBR2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec1_1 = CBR2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
-        self.score_fr = nn.Conv2d(in_channels=64, out_channels=num_classes, kernel_size=1, stride=1, padding=0, bias=True) # Output Segmentation map
+        self.score_fr = nn.Conv2d(in_channels=64, out_channels=num_classes, kernel_size=1,
+                                  stride=1, padding=0, bias=True)  # Output Segmentation map
 
     def forward(self, x):
         enc1_1 = self.enc1_1(x)
@@ -136,8 +143,6 @@ class UNet(nn.Module):
         return output
 
 
-
-
 model = torch.load(os.path.join(SAVED_DIR, "unet_aug_best.pt"))
 
 IMAGE_ROOT = "./data/test/"
@@ -148,6 +153,7 @@ pngs = {
     for fname in files
     if os.path.splitext(fname)[1].lower() == ".png"
 }
+
 
 def encode_mask_to_rle(mask):
     '''
@@ -162,6 +168,7 @@ def encode_mask_to_rle(mask):
     runs[1::2] -= runs[::2]
     return ' '.join(str(x) for x in runs)
 
+
 def decode_rle_to_mask(rle, height, width):
     s = rle.split()
     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
@@ -173,6 +180,7 @@ def decode_rle_to_mask(rle, height, width):
         img[lo:hi] = 1
 
     return img.reshape(height, width)
+
 
 class XRayInferenceDataset(Dataset):
     def __init__(self, transforms=None):
@@ -203,7 +211,8 @@ class XRayInferenceDataset(Dataset):
         image = torch.from_numpy(image).float()
 
         return image, image_name
-    
+
+
 def test(model, data_loader, thr=0.5):
     model = model.cuda()
     model.eval()
@@ -229,6 +238,7 @@ def test(model, data_loader, thr=0.5):
                     filename_and_class.append(f"{IND2CLASS[c]}_{image_name}")
 
     return rles, filename_and_class
+
 
 tf = A.Resize(512, 512)
 

@@ -26,7 +26,6 @@ import matplotlib.pyplot as plt
 import segmentation_models_pytorch as smp
 
 
-
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
     'finger-6', 'finger-7', 'finger-8', 'finger-9', 'finger-10',
@@ -42,10 +41,10 @@ IND2CLASS = {v: k for k, v in CLASS2IND.items()}
 SAVED_DIR = "checkpoints"
 
 model = smp.UnetPlusPlus(
-    encoder_name="efficientnet-b7",        # 백본 네트워크
-    encoder_weights="imagenet",    # 사전 학습 가중치
-    in_channels=3,                 # 입력 채널 수 (RGB 이미지)
-    classes=len(CLASSES)           # 출력 클래스 수
+    encoder_name="efficientnet-b7",
+    encoder_weights="imagenet",
+    in_channels=3,
+    classes=len(CLASSES)
 )
 
 
@@ -59,6 +58,7 @@ pngs = {
     for fname in files
     if os.path.splitext(fname)[1].lower() == ".png"
 }
+
 
 def encode_mask_to_rle(mask):
     pixels = mask.flatten()
@@ -96,6 +96,7 @@ class XRayInferenceDataset(Dataset):
         image = torch.from_numpy(image).float()
 
         return image, image_name
+
 
 def test_with_tta(model, data_loader, tta_transforms, thr=0.5):
     model = model.cuda()
@@ -137,6 +138,7 @@ def test_with_tta(model, data_loader, tta_transforms, thr=0.5):
                     filename_and_class.append(f"{IND2CLASS[c]}_{image_name}")
 
     return rles, filename_and_class
+
 
 # TTA Transformations 정의
 tta_transforms = [
