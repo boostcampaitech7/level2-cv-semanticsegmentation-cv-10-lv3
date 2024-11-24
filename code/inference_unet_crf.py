@@ -26,6 +26,9 @@ import matplotlib.pyplot as plt
 
 from model import *
 
+import pydensecrf.densecrf as dcrf
+from pydensecrf.utils import unary_from_softmax, create_pairwise_gaussian, create_pairwise_bilateral
+
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
     'finger-6', 'finger-7', 'finger-8', 'finger-9', 'finger-10',
@@ -40,7 +43,9 @@ IND2CLASS = {v: k for k, v in CLASS2IND.items()}
 
 SAVED_DIR = "/data/ephemeral/home/git/code/checkpoints/result_unet/"
 
-model = torch.load(os.path.join(SAVED_DIR, "unet3p_focal4dice6.pt"))
+
+
+model = torch.load(os.path.join(SAVED_DIR, "unet3p_aug2.pt"))
 
 IMAGE_ROOT = "/data/ephemeral/home/data/test/DCM/"
 
@@ -75,6 +80,53 @@ def decode_rle_to_mask(rle, height, width):
         img[lo:hi] = 1
 
     return img.reshape(height, width)
+
+def apply_crf(original_image, output_probs, n_classes):
+    """
+    Apply Conditional Random Field (CRF) to refine segmentation predictions.
+
+    Args:
+        original_image (numpy.ndarray): Original input image (H, W, 3).
+        output_probs (numpy.ndarray): Predicted probabilities of shape (n_classes, H, W).
+        n_classes (int): Number of classes.
+
+    Returns:
+        numpy.ndarray: Refined probabilities of shape (n_classes, H, W).
+    """
+    H, W = original_image.shape[:2]
+    output_probs = output_probs.reshape((n_classes, -1))
+    
+    # Initialize CRF model
+    d = dcrf.DenseCRF2D(W, H, n_classes)
+    
+    # Compute unary energy
+    U = -np.log(output_probs + 1e-8).astype(np.float32)  # Avoid log(0) and ensure float32 precision
+    d.setUnaryEnergy(U)
+    
+    # Add pairwise Gaussian potentials
+    sxy_gaussian = 5  # Spatial standard deviation
+    gaussian = create_pairwise_gaussian(sdims=(sxy_gaussian, sxy_gaussian), shape=(H, W))
+    d.addPairwiseEnergy(gaussian, compat=2)
+    
+    # Add pairwise bilateral potentials
+    sxy_bilateral = 15  # Spatial standard deviation
+    srgb = 10  # Color standard deviation
+    bilateral = create_pairwise_bilateral(
+        sdims=(sxy_bilateral, sxy_bilateral),
+        schan=(srgb, srgb, srgb),
+        img=original_image,
+        chdim=2,
+    )
+    d.addPairwiseEnergy(bilateral, compat=4)
+    
+    # Perform CRF inference
+    Q = d.inference(1)  # Number of iterations
+
+    # Reshape output and apply optional threshold
+    Q = np.array(Q).reshape((n_classes, H, W))
+    Q = (Q > 0.5).astype(np.uint8)  # Thresholding
+
+    return Q
 
 class XRayInferenceDataset(Dataset):
     def __init__(self, transforms=None):
@@ -121,14 +173,26 @@ def test(model, data_loader, thr=0.5):
 
             # Resize to original dimensions
             outputs = F.interpolate(outputs, size=(2048, 2048), mode="bilinear")
-            outputs = torch.sigmoid(outputs)
-            outputs = (outputs > thr).detach().cpu().numpy()
+            outputs = F.softmax(outputs, dim=1).detach().cpu().numpy()  # Compute class probabilities
 
             for output, image_name in zip(outputs, image_names):
-                for c, segm in enumerate(output):
-                    rle = encode_mask_to_rle(segm)
-                    rles.append(rle)
-                    filename_and_class.append(f"{IND2CLASS[c]}_{image_name}")
+                # Read the original image
+                original_image = cv2.imread(os.path.join(IMAGE_ROOT, image_name))
+                
+                # Apply CRF
+                crf_output = apply_crf(original_image, output, n_classes=n_class)
+
+                # Convert CRF output to final binary masks
+                crf_labels = np.argmax(crf_output, axis=0).astype(np.uint8)
+
+                for c in range(n_class):
+                    if c in IND2CLASS:  # Ensure valid class index
+                        segm = (crf_labels == c).astype(np.uint8)  # Create binary mask for class `c`
+                        rle = encode_mask_to_rle(segm)
+                        rles.append(rle)
+                        filename_and_class.append(f"{IND2CLASS[c]}_{image_name}")
+                    else:
+                        print(f"Warning: Invalid class index {c} encountered for {image_name}")
 
     return rles, filename_and_class
 
@@ -163,6 +227,6 @@ df = pd.DataFrame({
     "rle": rles,
 })
 
-df.to_csv("unet3p_focal4dice6.csv", index=False)
+df.to_csv("unet3p_aug2_crf3.csv", index=False)
 
 df["image_name"].nunique()

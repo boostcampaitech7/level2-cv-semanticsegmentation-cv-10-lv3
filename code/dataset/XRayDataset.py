@@ -12,8 +12,8 @@ from torch.utils.data import Dataset
 
 
 
-IMAGE_ROOT = "./data/train/DCM"
-LABEL_ROOT = "./data/train/outputs_json"
+IMAGE_ROOT = "/data/ephemeral/home/data/train/DCM"
+LABEL_ROOT = "/data/ephemeral/home/data/train/outputs_json"
 
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
