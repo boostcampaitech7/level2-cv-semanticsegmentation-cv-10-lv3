@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="unet3p_focal3dice7_1024.pt")
+    parser.add_argument("--pt_name",         type=str,   default="unet3p_focal3dice7_512.pt")
 
     args = parser.parse_args()
     return args
@@ -115,7 +115,7 @@ def focal_loss(inputs, targets, alpha=.25, gamma=2) :
     inputs = F.sigmoid(inputs)       
     inputs = inputs.view(-1)
     targets = targets.view(-1)
-    BCE = F.binary_cross_entropy(inputs, targets, reduction='mean')
+    BCE = F.binary_cross_entropy_with_logits(inputs, targets, reduction='mean')
     BCE_EXP = torch.exp(-BCE)
     loss = alpha * (1-BCE_EXP)**gamma * BCE
     return loss 
@@ -175,44 +175,45 @@ def set_seed():
 def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
     print(f'Start training..')
 
+    model = model.cuda()  # 모델을 GPU로 이동
+    model = model.half()  # 모델 파라미터를 float16로 변환
+    
+    # BatchNorm 계열 레이어는 float32 유지
+    for layer in model.modules():
+        if isinstance(layer, (nn.BatchNorm2d, nn.LayerNorm)):
+            layer.float()
+
     n_class = len(CLASSES)
     best_dice = 0.
+    scaler = torch.cuda.amp.GradScaler()  # GradScaler for AMP
 
     for epoch in range(NUM_EPOCHS):
         model.train()
         for step, (images, masks) in enumerate(data_loader):
-            images, masks = images.cuda(), masks.cuda()
-            model = model.cuda()
-
-            if MODEL.lower() == "fcn":
-                outputs = model(images)['out']
-            elif MODEL.lower() == "unet":
+            images, masks = images.cuda().half(), masks.cuda().half()  # 데이터 타입 변환
+            
+            # AMP enabled forward pass
+            with torch.cuda.amp.autocast():
                 outputs = model(images)
-            elif MODEL.lower() == "deeplabv3p":
-                outputs = model(images)
+                loss = criterion(outputs, masks)
 
-                output_h, output_w = outputs.size(-2), outputs.size(-1)
-                mask_h, mask_w = masks.size(-2), masks.size(-1)
-
-                if output_h != mask_h or output_w != mask_w:
-                    outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
-
-            loss = criterion(outputs, masks)
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            scaler.scale(loss).backward()  # Scale the loss and backpropagate
+            scaler.step(optimizer)
+            scaler.update()
 
             if (step + 1) % 25 == 0:
                 print(
                     f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
                     f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
-                    f'Step [{step+1}/{len(train_loader)}], '
+                    f'Step [{step+1}/{len(data_loader)}], '
                     f'Loss: {round(loss.item(),4)}'
                 )
 
-        # Update the learning rate with the scheduler
-        scheduler.step()
-        
+        scheduler.step()  # 학습률 업데이트
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"Epoch {epoch + 1}, Current LR: {current_lr:.9f}")
+
         if (epoch + 1) % VAL_EVERY == 0:
             dice = validation(epoch + 1, model, val_loader, criterion)
 
