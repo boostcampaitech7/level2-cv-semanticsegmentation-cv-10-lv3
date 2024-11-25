@@ -23,6 +23,8 @@ from dataset.XRayDataset import *
 from loss.FocalLoss import FocalLoss
 from model import *
 
+from torch.cuda.amp import GradScaler, autocast
+
 # model name
 # fcn, unet(unetpp), deeplabv3p
 
@@ -31,7 +33,7 @@ from model import *
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",      type=str,   default="unet")
-    parser.add_argument("--tr_batch_size",   type=int,   default=4)
+    parser.add_argument("--tr_batch_size",   type=int,   default=1)
     parser.add_argument("--val_batch_size",  type=int,   default=1)
     parser.add_argument("--val_every",       type=int,   default=5)
     parser.add_argument("--threshold",       type=float, default=0.5)
@@ -67,7 +69,7 @@ if not os.path.exists(SAVED_DIR):
 
 ############### Augmentation ###############
 train_tf = A.Compose([
-    A.Resize(512, 512),
+    A.Resize(1024, 1024),
     A.HorizontalFlip(p=0.5), 
     A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
     A.ElasticTransform(alpha=1, sigma=50, p=0.5),
@@ -75,7 +77,7 @@ train_tf = A.Compose([
 ])
 
 valid_tf = A.Compose([
-    A.Resize(512, 512)
+    A.Resize(1024, 1024)
 ])
 
 
@@ -111,14 +113,17 @@ def dice_coef(y_true, y_pred):
     return (2. * intersection + eps) / (torch.sum(y_true_f, -1) + torch.sum(y_pred_f, -1) + eps)
 
 # focal loss 
-def focal_loss(inputs, targets, alpha=.25, gamma=2) : 
-    inputs = F.sigmoid(inputs)       
-    inputs = inputs.view(-1)
-    targets = targets.view(-1)
-    BCE = F.binary_cross_entropy(inputs, targets, reduction='mean')
+def focal_loss(inputs, targets, alpha=0.25, gamma=2):
+    """
+    Focal Loss 계산.
+    - inputs: 모델의 raw logits (sigmoid를 적용하지 않은 상태로 입력)
+    - targets: Ground truth
+    """
+    # BCEWithLogitsLoss와 유사하게 logits을 입력으로 받아 처리
+    BCE = F.binary_cross_entropy_with_logits(inputs, targets, reduction='mean')
     BCE_EXP = torch.exp(-BCE)
-    loss = alpha * (1-BCE_EXP)**gamma * BCE
-    return loss 
+    loss = alpha * (1 - BCE_EXP) ** gamma * BCE
+    return loss
 
 def dice_loss(pred, target, smooth = 1.):
     pred = pred.contiguous()
@@ -138,17 +143,13 @@ def BCE_Dice_loss(pred, target, bce_weight = 0.5):
 def focal_dice_loss(pred, target, focal_weight=0.3, dice_weight=0.7, alpha=0.25, gamma=2, smooth=1.0):
     """
     Focal Loss와 Dice Loss를 결합한 Loss 함수입니다.
-    - pred: 모델 예측값
+    - pred: 모델 예측값 (raw logits, sigmoid를 거치지 않은 상태)
     - target: 실제 정답 값
-    - focal_weight: Focal Loss 비중
-    - dice_weight: Dice Loss 비중
-    - alpha, gamma: Focal Loss의 하이퍼파라미터
-    - smooth: Dice Loss의 안정성을 위한 smoothing term
     """
     # Focal Loss 계산
     focal = focal_loss(pred, target, alpha=alpha, gamma=gamma)
     
-    # Dice Loss 계산
+    # Dice Loss 계산 (sigmoid를 명시적으로 적용)
     pred = torch.sigmoid(pred)
     dice = dice_loss(pred, target, smooth=smooth)
     
@@ -177,6 +178,9 @@ def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
 
     n_class = len(CLASSES)
     best_dice = 0.
+    
+    # Initialize GradScaler for mixed precision training
+    scaler = GradScaler()
 
     for epoch in range(NUM_EPOCHS):
         model.train()
@@ -184,23 +188,29 @@ def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
             images, masks = images.cuda(), masks.cuda()
             model = model.cuda()
 
-            if MODEL.lower() == "fcn":
-                outputs = model(images)['out']
-            elif MODEL.lower() == "unet":
-                outputs = model(images)
-            elif MODEL.lower() == "deeplabv3p":
-                outputs = model(images)
-
-                output_h, output_w = outputs.size(-2), outputs.size(-1)
-                mask_h, mask_w = masks.size(-2), masks.size(-1)
-
-                if output_h != mask_h or output_w != mask_w:
-                    outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
-
-            loss = criterion(outputs, masks)
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            
+            # Mixed precision: forward pass under autocast
+            with autocast():
+                if MODEL.lower() == "fcn":
+                    outputs = model(images)['out']
+                elif MODEL.lower() == "unet":
+                    outputs = model(images)
+                elif MODEL.lower() == "deeplabv3p":
+                    outputs = model(images)
+
+                    output_h, output_w = outputs.size(-2), outputs.size(-1)
+                    mask_h, mask_w = masks.size(-2), masks.size(-1)
+
+                    if output_h != mask_h or output_w != mask_w:
+                        outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
+
+                loss = criterion(outputs, masks)
+
+            # Backward pass with scaled gradients
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             if (step + 1) % 25 == 0:
                 print(
