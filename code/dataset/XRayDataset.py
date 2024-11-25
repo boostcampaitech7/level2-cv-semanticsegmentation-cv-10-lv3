@@ -55,7 +55,7 @@ jsons = sorted(jsons)
 fold_index = 1  # 실행할 Fold 번호 (0, 1, 2, 3, 4 중 하나)  
 
 class XRayDataset(Dataset):
-    def __init__(self, is_train=True, transforms=None, fold=0) :
+    def __init__(self, fold_idx, is_train=True, transforms=None):
         _filenames = np.array(pngs)
         _labelnames = np.array(jsons)
         
@@ -74,6 +74,7 @@ class XRayDataset(Dataset):
         
         filenames = []
         labelnames = []
+        
         for i, (x, y) in enumerate(gkf.split(_filenames, ys, groups)):
                 if is_train and i != fold_idx:  # Training data
                     filenames += list(_filenames[y])
