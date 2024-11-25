@@ -51,6 +51,9 @@ assert len(pngs_fn_prefix - jsons_fn_prefix) == 0
 pngs = sorted(pngs)
 jsons = sorted(jsons)
 
+# fold_index를 명시적으로 설정
+fold_index = 1  # 실행할 Fold 번호 (0, 1, 2, 3, 4 중 하나)  
+
 class XRayDataset(Dataset):
     def __init__(self, is_train=True, transforms=None, fold=0) :
         _filenames = np.array(pngs)
@@ -72,20 +75,12 @@ class XRayDataset(Dataset):
         filenames = []
         labelnames = []
         for i, (x, y) in enumerate(gkf.split(_filenames, ys, groups)):
-            if is_train:
-                # 0번을 validation dataset으로 사용합니다.
-                if i == fold:
-                    continue
-                    
-                filenames += list(_filenames[y])
-                labelnames += list(_labelnames[y])
-            
-            else:
-                filenames = list(_filenames[y])
-                labelnames = list(_labelnames[y])
-                
-                # skip i > 0
-                break
+                if is_train and i != fold_idx:  # Training data
+                    filenames += list(_filenames[y])
+                    labelnames += list(_labelnames[y])
+                elif not is_train and i == fold_idx:  # Validation data
+                    filenames = list(_filenames[y])
+                    labelnames = list(_labelnames[y])
         
         self.filenames = filenames
         self.labelnames = labelnames
