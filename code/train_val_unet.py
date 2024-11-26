@@ -31,8 +31,10 @@ import segmentation_models_pytorch as smp
 # fcn, unet(unetpp), deeplabv3p
 
 ############## PARSE ARGUMENT ########################
+
+
 def parse_args():
-    parser = argparse.ArgumentParser()   
+    parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",      type=str,   default="unet")
     parser.add_argument("--img_size",        type=int,   default=1024)
     parser.add_argument("--tr_batch_size",   type=int,   default=2)
@@ -45,9 +47,10 @@ def parse_args():
     parser.add_argument("--seed",            type=int,   default=21)
     parser.add_argument("--pt_name",         type=str,   default="unetPP_smp_1024_eff.pt")
     parser.add_argument("--log_name",         type=str,   default="unetPP_smp_1024_eff")
-    
+
     args = parser.parse_args()
     return args
+
 
 args = parse_args()
 
@@ -67,60 +70,26 @@ LR = args.lr
 TH = args.threshold
 SAVED_DIR = f"./checkpoints/result_{MODEL}"
 
-if not os.path.exists(SAVED_DIR):                                                           
+if not os.path.exists(SAVED_DIR):
     os.makedirs(SAVED_DIR)
 
 
 ############### Augmentation ###############
-
-class CustomCenterCrop(A.ImageOnlyTransform):
-    def __init__(self, height, width, shift_down_ratio, always_apply=False, p=1.0):
-        super().__init__(always_apply, p)
-        self.height = height
-        self.width = width
-        self.shift_down_ratio = shift_down_ratio  # 아래로 이동 비율
-
-    def apply(self, img, **params):
-        h, w, _ = img.shape
-        # 중심 좌표 계산
-        center_x = w // 2
-        center_y = int(h // 2 + h * self.shift_down_ratio)  # 아래로 이동된 중심
-        # 자를 영역 계산
-        x1 = max(center_x - self.width // 2, 0)
-        y1 = max(center_y - self.height // 2, 0)
-        x2 = x1 + self.width
-        y2 = y1 + self.height
-
-        # 원본 이미지 크기 초과 방지
-        x2 = min(x2, w)
-        y2 = min(y2, h)
-        x1 = max(x2 - self.width, 0)  # 자른 영역이 항상 width에 맞도록
-        y1 = max(y2 - self.height, 0)  # 자른 영역이 항상 height에 맞도록
-        
-        cropped_img = img[y1:y2, x1:x2]
-        
-        # 크기 확인 디버깅
-        # print(f"Original size: ({h}, {w}), Crop size: ({cropped_img.shape[0]}, {cropped_img.shape[1]})")
-        
-        return cropped_img
-
-
-
-trian_tf = A.Compose([        
-        A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-        A.HorizontalFlip(p=0.5),
-        A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
-        A.ElasticTransform(alpha=15.0, sigma=2.0, p=0.4),
-        A.GridDistortion(distort_limit=0.2, p=0.4),
-        A.Rotate(limit=30, p=0.3),
-        A.CLAHE(clip_limit=(1, 4), p=0.5),
-        A.RandomBrightnessContrast(brightness_limit=(0.0, 0.3), contrast_limit=0.2, p=0.3),
-        A.GridDropout(ratio=0.4, random_offset=False,holes_number_x=12, holes_number_y=12, p=0.4)
-    ])
+trian_tf = A.Compose([
+    A.Resize(IMAGE_SIZE, IMAGE_SIZE),
+    A.HorizontalFlip(p=0.5),
+    A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
+    A.ElasticTransform(alpha=15.0, sigma=2.0, p=0.4),
+    A.GridDistortion(distort_limit=0.2, p=0.4),
+    A.Rotate(limit=30, p=0.3),
+    A.CLAHE(clip_limit=(1, 4), p=0.5),
+    A.RandomBrightnessContrast(brightness_limit=(0.0, 0.3), contrast_limit=0.2, p=0.3),
+    A.GridDropout(ratio=0.4, random_offset=False, holes_number_x=12, holes_number_y=12, p=0.4)
+])
 
 val_tf = A.Compose([
-        A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-    ])
+    A.Resize(IMAGE_SIZE, IMAGE_SIZE),
+])
 
 ############### Dataset ###############
 train_dataset = XRayDataset(is_train=True, transforms=trian_tf, fold=FOLD)
@@ -128,7 +97,7 @@ valid_dataset = XRayDataset(is_train=False, transforms=val_tf, fold=FOLD)
 
 
 train_loader = DataLoader(
-    dataset=train_dataset, 
+    dataset=train_dataset,
     batch_size=TRAIN_BATCH_SIZE,
     shuffle=True,
     num_workers=8,
@@ -136,7 +105,7 @@ train_loader = DataLoader(
 )
 
 valid_loader = DataLoader(
-    dataset=valid_dataset, 
+    dataset=valid_dataset,
     batch_size=VAL_BATCH_SIZE,
     shuffle=False,
     num_workers=0,
@@ -149,7 +118,7 @@ def dice_coef(y_true, y_pred):
     y_true_f = y_true.flatten(2)
     y_pred_f = y_pred.flatten(2)
     intersection = torch.sum(y_true_f * y_pred_f, -1)
-    
+
     eps = 0.0001
     return (2. * intersection + eps) / (torch.sum(y_true_f, -1) + torch.sum(y_pred_f, -1) + eps)
 
@@ -157,31 +126,34 @@ def dice_coef(y_true, y_pred):
 def save_model(model, file_name=PT_NAME):
     output_path = os.path.join(SAVED_DIR, file_name)
     torch.save(model, output_path)
-    
+
 
 def set_seed():
     torch.manual_seed(RANDOM_SEED)
     torch.cuda.manual_seed(RANDOM_SEED)
-    torch.cuda.manual_seed_all(RANDOM_SEED) # if use multi-GPU
+    torch.cuda.manual_seed_all(RANDOM_SEED)  # if use multi-GPU
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
 # print 파일 기록하기 위한 함수
+
+
 def log_to_file(message, file_path=f"./log/{LOG_NAEM}.txt"):
     with open(file_path, "a") as f:
         f.write(message + "\n")
 
-def dice_loss(pred, target, smooth = 1.):
+
+def dice_loss(pred, target, smooth=1.):
     pred = pred.contiguous()
-    target = target.contiguous()   
+    target = target.contiguous()
     intersection = (pred * target).sum(dim=2).sum(dim=2)
-    loss = (1 - ((2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) +   target.sum(dim=2).sum(dim=2) + smooth)))
+    loss = (1 - ((2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) + target.sum(dim=2).sum(dim=2) + smooth)))
     return loss.mean()
 
 
-def BCE_Dice_loss(pred, target, bce_weight = 0.5):
+def BCE_Dice_loss(pred, target, bce_weight=0.5):
     bce = F.binary_cross_entropy_with_logits(pred, target)
     pred = F.sigmoid(pred)
     dice = dice_loss(pred, target)
@@ -189,64 +161,66 @@ def BCE_Dice_loss(pred, target, bce_weight = 0.5):
     return loss
 
 ############### TRAIN ###############
+
+
 def train(model, data_loader, val_loader, criterion, optimizer):
     print(f'Start training..')
-    
+
     n_class = len(CLASSES)
     best_dice = 0.
 
     # 스케줄러 정의
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
-    
+
     for epoch in range(NUM_EPOCHS):
         model.train()
-        for step, (images, masks) in enumerate(data_loader):            
+        for step, (images, masks) in enumerate(data_loader):
             images, masks = images.cuda(), masks.cuda()
             model = model.cuda()
-            
+
             if MODEL.lower() == "fcn":
                 outputs = model(images)['out']
             elif MODEL.lower() == "unet":
                 outputs = model(images)
             elif MODEL.lower() == "deeplabv3p":
                 outputs = model(images)
-                
+
                 output_h, output_w = outputs.size(-2), outputs.size(-1)
                 mask_h, mask_w = masks.size(-2), masks.size(-1)
-                
+
                 if output_h != mask_h or output_w != mask_w:
                     outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
-            
+
             # Loss 계산 및 최적화
             loss = criterion(outputs, masks)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
+
             if (step + 1) % 25 == 0:
                 log_message = (
-                f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
-                f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
-                f'Step [{step+1}/{len(data_loader)}], '
-                f'Loss: {round(loss.item(),4)}'
+                    f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
+                    f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
+                    f'Step [{step+1}/{len(data_loader)}], '
+                    f'Loss: {round(loss.item(),4)}'
                 )
                 print(log_message)
                 log_to_file(log_message)
 
         # 학습률 스케줄러 업데이트
         scheduler.step()
-        
+
         # 현재 학습률 출력 및 기록
         current_lr = scheduler.get_last_lr()[0]
         if epoch % 10 == 0:
             log_message = f"Epoch {epoch + 1}, Current LR: {current_lr:.6f}"
             print(log_message)
             log_to_file(log_message)
-             
+
         # Validation
         if (epoch + 1) % VAL_EVERY == 0:
             dice = validation(epoch + 1, model, val_loader, criterion)
-            
+
             if best_dice < dice:
                 log_message = (
                     f"Best performance at epoch: {epoch + 1}, {best_dice:.4f} -> {dice:.4f}\n"
@@ -256,8 +230,6 @@ def train(model, data_loader, val_loader, criterion, optimizer):
                 log_to_file(log_message)
                 best_dice = dice
                 save_model(model)
-
-
 
 
 ############### VALIDATION ###############
@@ -272,33 +244,33 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
         cnt = 0
 
         for step, (images, masks) in tqdm(enumerate(data_loader), total=len(data_loader)):
-            images, masks = images.cuda(), masks.cuda()         
+            images, masks = images.cuda(), masks.cuda()
             model = model.cuda()
-    
+
             if MODEL.lower() == "fcn":
                 outputs = model(images)['out']
             elif MODEL.lower() == "unet":
                 outputs = model(images)
             elif MODEL.lower() == "deeplabv3p":
                 outputs = model(images)
-            
+
             output_h, output_w = outputs.size(-2), outputs.size(-1)
             mask_h, mask_w = masks.size(-2), masks.size(-1)
-            
+
             if output_h != mask_h or output_w != mask_w:
                 outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear")
-            
+
             loss = criterion(outputs, masks)
             total_loss += loss
             cnt += 1
-            
+
             outputs = torch.sigmoid(outputs)
             outputs = (outputs > thr).detach().cpu()
             masks = masks.detach().cpu()
-            
+
             dice = dice_coef(outputs, masks)
             dices.append(dice)
-                
+
     dices = torch.cat(dices, 0)
     dices_per_class = torch.mean(dices, 0)
     dice_str = [
@@ -308,9 +280,9 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
     dice_str = "\n".join(dice_str)
     print(dice_str)
     log_to_file(dice_str)
-    
+
     avg_dice = torch.mean(dices_per_class).item()
-    
+
     return avg_dice
 
 
@@ -339,4 +311,3 @@ set_seed()
 
 # train
 train(model, train_loader, valid_loader, criterion, optimizer)
-
