@@ -162,7 +162,6 @@ def focal_loss(inputs, targets, alpha=0.25, gamma=2):
 
     inputs = inputs.view(-1)
     targets = targets.view(-1)
-
     BCE = F.binary_cross_entropy_with_logits(inputs, targets, reduction='mean')
     BCE_EXP = torch.exp(-BCE)
     loss = alpha * (1 - BCE_EXP)**gamma * BCE
@@ -220,15 +219,22 @@ def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
     print(f'Start training with AMP enabled..')
     model.cuda()
 
+    model = model.cuda()  # 모델을 GPU로 이동
+    model = model.half()  # 모델 파라미터를 float16로 변환
+    
+    # BatchNorm 계열 레이어는 float32 유지
+    for layer in model.modules():
+        if isinstance(layer, (nn.BatchNorm2d, nn.LayerNorm)):
+            layer.float()
+
     n_class = len(CLASSES)
     best_dice = 0.
-    scaler = torch.cuda.amp.GradScaler()  # GradScaler for AMP # 기본값은 enabled=True
+    scaler = torch.cuda.amp.GradScaler()  # GradScaler for AMP
 
     for epoch in range(NUM_EPOCHS):
         model.train()
 
         for step, (images, masks) in enumerate(data_loader):
-            # gpu 연산을 위해 device 할당
             images, masks = images.cuda(), masks.cuda()
             
             # AMP enabled forward pass
@@ -246,7 +252,7 @@ def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
                 print(
                     f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
                     f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
-                    f'Step [{step+1}/{len(train_loader)}], '
+                    f'Step [{step+1}/{len(data_loader)}], '
                     f'Loss: {round(loss.item(),4)}'
                 )
                 
