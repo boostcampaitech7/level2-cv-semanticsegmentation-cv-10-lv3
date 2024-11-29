@@ -21,17 +21,21 @@ from torchvision import models
 # model, dataset
 from dataset.XRayDataset import *
 from dataset.XRayDatasetAll import *
+from loss.FocalLoss import FocalLoss
 from model import *
 import segmentation_models_pytorch as smp
-from torch.cuda.amp import autocast, GradScaler
 
+# model name
+# fcn, unet(unetpp), deeplabv3p
 
 ############## PARSE ARGUMENT ########################
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",      type=str,   default="unet")
-    parser.add_argument("--img_size",        type=int,   default=512)
-    parser.add_argument("--tr_batch_size",   type=int,   default=3)
+    parser.add_argument("--img_size",        type=int,   default=1024)
+    parser.add_argument("--tr_batch_size",   type=int,   default=2)
     parser.add_argument("--val_batch_size",  type=int,   default=1)
     parser.add_argument("--val_every",       type=int,   default=10)
     parser.add_argument("--threshold",       type=float, default=0.5)
@@ -39,8 +43,8 @@ def parse_args():
     parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="unetPP_effcientnetl2.pt")
-    parser.add_argument("--log_name",         type=str,   default="unetPP_effcientnetl2")
+    parser.add_argument("--pt_name",         type=str,   default="unetPP_base.pt")
+    parser.add_argument("--log_name",         type=str,   default="unetPP_base_eff")
 
     args = parser.parse_args()
     return args
@@ -62,37 +66,31 @@ VAL_EVERY = args.val_every
 NUM_EPOCHS = args.epochs
 LR = args.lr
 TH = args.threshold
-SAVED_DIR = f"./checkpoints/result_{MODEL}"
-
+SAVED_DIR = f"./checkpoints/result_
 if not os.path.exists(SAVED_DIR):
-    os.makedirs(SAVED_DIR)
+    os.makedirs(SAVED_DIR){MODEL}"
 
 
 ############### Augmentation ###############
 trian_tf = A.Compose([
-    # A.OneOf([  # 변환 중 하나를 선택
-    #     CustomCenterCrop(height=512, width=512, shift_down_ratio=0.2),
-    # ], p=0.5),
     A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-    A.RandomBrightnessContrast(
-        brightness_limit=0.3,
-        contrast_limit=0.3,
-        p=0.5
-    ),
-    A.CLAHE(clip_limit=(1, 4), tile_grid_size=(8, 8), p=0.5)
+    A.HorizontalFlip(p=0.5),
+    A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
+    A.ElasticTransform(alpha=15.0, sigma=2.0, p=0.4),
+    A.GridDistortion(distort_limit=0.2, p=0.4),
+    A.Rotate(limit=30, p=0.3),
+    A.CLAHE(clip_limit=(1, 4), p=0.5),
+    A.RandomBrightnessContrast(brightness_limit=(0.0, 0.3), contrast_limit=0.2, p=0.3),
+    A.GridDropout(ratio=0.4, random_offset=False, holes_number_x=12, holes_number_y=12, p=0.4)
 ])
-
 
 val_tf = A.Compose([
     A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-    # A.ElasticTransform(p=0.2),
-    # A.Sharpen()
 ])
 
 ############### Dataset ###############
-train_dataset = XRayDatasetAll(is_train=True, transforms=trian_tf, fold=FOLD)
-valid_dataset = XRayDatasetAll(is_train=False, transforms=val_tf, fold=FOLD)
-
+train_dataset = XRayDataset(is_train=True, transforms=trian_tf, fold=FOLD)
+valid_dataset = XRayDataset(is_train=False, transforms=val_tf, fold=FOLD)
 
 train_loader = DataLoader(
     dataset=train_dataset,
@@ -135,8 +133,9 @@ def set_seed():
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
-
 # print 파일 기록하기 위한 함수
+
+
 def log_to_file(message, file_path=f"./log/{LOG_NAEM}.txt"):
     with open(file_path, "a") as f:
         f.write(message + "\n")
@@ -157,59 +156,49 @@ def BCE_Dice_loss(pred, target, bce_weight=0.5):
     loss = bce * bce_weight + dice * (1 - bce_weight)
     return loss
 
+############### TRAIN ###############
 
-def train(model, data_loader, criterion, optimizer):
+
+def train(model, data_loader, val_loader, criterion, optimizer):
     print(f'Start training..')
 
     n_class = len(CLASSES)
-    best_loss = float('inf')  # Loss를 기준으로 모델 저장
-    model = model.cuda()
-
-    # GradScaler 초기화
-    scaler = GradScaler()
+    best_dice = 0.
 
     # 스케줄러 정의
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 
     for epoch in range(NUM_EPOCHS):
         model.train()
-        total_loss = 0  # 전체 loss 계산
-
         for step, (images, masks) in enumerate(data_loader):
             images, masks = images.cuda(), masks.cuda()
+            model = model.cuda()
 
-            optimizer.zero_grad()  # Optimizer 초기화
+            if MODEL.lower() == "fcn":
+                outputs = model(images)['out']
+            elif MODEL.lower() == "unet":
+                outputs = model(images)
+            elif MODEL.lower() == "deeplabv3p":
+                outputs = model(images)
 
-            with autocast():  # Mixed Precision Training 적용
-                if MODEL.lower() == "fcn":
-                    outputs = model(images)['out']
-                elif MODEL.lower() == "unet":
-                    outputs = model(images)
-                elif MODEL.lower() == "deeplabv3p":
-                    outputs = model(images)
+                output_h, output_w = outputs.size(-2), outputs.size(-1)
+                mask_h, mask_w = masks.size(-2), masks.size(-1)
 
-                    output_h, output_w = outputs.size(-2), outputs.size(-1)
-                    mask_h, mask_w = masks.size(-2), masks.size(-1)
+                if output_h != mask_h or output_w != mask_w:
+                    outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
 
-                    if output_h != mask_h or output_w != mask_w:
-                        outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
-
-                # 손실 계산
-                loss = criterion(outputs, masks)
-
-            # Scaler를 사용하여 역전파
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-
-            total_loss += loss.item()
+            # Loss 계산 및 최적화
+            loss = criterion(outputs, masks)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
             if (step + 1) % 25 == 0:
                 log_message = (
                     f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | '
                     f'Epoch [{epoch+1}/{NUM_EPOCHS}], '
                     f'Step [{step+1}/{len(data_loader)}], '
-                    f'Loss: {round(loss.item(), 4)}'
+                    f'Loss: {round(loss.item(),4)}'
                 )
                 print(log_message)
                 log_to_file(log_message)
@@ -224,46 +213,92 @@ def train(model, data_loader, criterion, optimizer):
             print(log_message)
             log_to_file(log_message)
 
-        # 현재 epoch의 평균 loss 계산
-        avg_loss = total_loss / len(data_loader)
-        log_message = f"Epoch {epoch + 1}, Average Loss: {avg_loss:.4f}"
-        print(log_message)
-        log_to_file(log_message)
+        # Validation
+        if (epoch + 1) % VAL_EVERY == 0:
+            dice = validation(epoch + 1, model, val_loader, criterion)
 
-        # Loss를 기준으로 모델 저장
-        if avg_loss < best_loss:
-            log_message = (
-                f"Best performance at epoch: {epoch + 1}, Loss {best_loss:.4f} -> {avg_loss:.4f}\n"
-                f"Save model in {SAVED_DIR}"
-            )
-            print(log_message)
-            log_to_file(log_message)
-            best_loss = avg_loss
-            save_model(model)
+            if best_dice < dice:
+                log_message = (
+                    f"Best performance at epoch: {epoch + 1}, {best_dice:.4f} -> {dice:.4f}\n"
+                    f"Save model in {SAVED_DIR}"
+                )
+                print(log_message)
+                log_to_file(log_message)
+                best_dice = dice
+                save_model(model)
+
+
+############### VALIDATION ###############
+def validation(epoch, model, data_loader, criterion, thr=TH):
+    print(f'Start validation #{epoch:2d}')
+    model.eval()
+
+    dices = []
+    with torch.no_grad():
+        n_class = len(CLASSES)
+        total_loss = 0
+        cnt = 0
+
+        for step, (images, masks) in tqdm(enumerate(data_loader), total=len(data_loader)):
+            images, masks = images.cuda(), masks.cuda()
+            model = model.cuda()
+
+            if MODEL.lower() == "fcn":
+                outputs = model(images)['out']
+            elif MODEL.lower() == "unet":
+                outputs = model(images)
+            elif MODEL.lower() == "deeplabv3p":
+                outputs = model(images)
+
+            output_h, output_w = outputs.size(-2), outputs.size(-1)
+            mask_h, mask_w = masks.size(-2), masks.size(-1)
+
+            if output_h != mask_h or output_w != mask_w:
+                outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear")
+
+            loss = criterion(outputs, masks)
+            total_loss += loss
+            cnt += 1
+
+            outputs = torch.sigmoid(outputs)
+            outputs = (outputs > thr).detach().cpu()
+            masks = masks.detach().cpu()
+
+            dice = dice_coef(outputs, masks)
+            dices.append(dice)
+
+    dices = torch.cat(dices, 0)
+    dices_per_class = torch.mean(dices, 0)
+    dice_str = [
+        f"{c:<12}: {d.item():.4f}"
+        for c, d in zip(CLASSES, dices_per_class)
+    ]
+    dice_str = "\n".join(dice_str)
+    print(dice_str)
+    log_to_file(dice_str)
+
+    avg_dice = torch.mean(dices_per_class).item()
+
+    return avg_dice
 
 
 ############### TRAINING SETTINGS 2 ###############
-# smp
-model = smp.UnetPlusPlus(
-    encoder_name="timm-efficientnet-l2",  # efficientnet-b7 timm-efficientnet-l2
-    encoder_weights="noisy-student-475",     # 사전 학습된 가중치 설정
-    in_channels=3,                       # 입력 채널 (RGB 이미지)
-    classes=29                           # 출력 클래스 수
+model = smp.Unet(
+    encoder_name="efficientnet-b7",
+    encoder_weights="imagenet",
+    in_channels=3,
+    classes=29
 )
 
-
-# output class 개수를 dataset에 맞도록 수정합니다.
 if MODEL.lower() == "fcn":
     model.classifier[4] = nn.Conv2d(512, len(CLASSES), kernel_size=1)
 
-# Loss function
 criterion = BCE_Dice_loss
 
-# Optimizer
 optimizer = optim.AdamW(params=model.parameters(), lr=LR, weight_decay=1e-5)
 
 # Set_seed
 set_seed()
 
 # train
-train(model, train_loader, criterion, optimizer)
+train(model, train_loader, valid_loader, criterion, optimizer)

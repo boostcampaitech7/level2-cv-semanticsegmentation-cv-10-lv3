@@ -11,9 +11,13 @@ import torch
 from torch.utils.data import Dataset
 
 
+# IMAGE_ROOT = "./data/train/DCM"
+# LABEL_ROOT = "./data/train/outputs_json"
 
-IMAGE_ROOT = "./data/train/DCM"
-LABEL_ROOT = "./data/train/outputs_json"
+# Pseudo
+IMAGE_ROOT = "./data/train_pseudo/DCM"
+LABEL_ROOT = "./data/train_pseudo/outputs_json"
+
 
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
@@ -34,7 +38,7 @@ pngs = {
     for fname in files
     if os.path.splitext(fname)[1].lower() == ".png"
 }
-    
+
 jsons = {
     os.path.relpath(os.path.join(root, fname), start=LABEL_ROOT)
     for root, _dirs, files in os.walk(LABEL_ROOT)
@@ -51,11 +55,12 @@ assert len(pngs_fn_prefix - jsons_fn_prefix) == 0
 pngs = sorted(pngs)
 jsons = sorted(jsons)
 
+
 class XRayDatasetAll(Dataset):
-    def __init__(self, is_train=True, transforms=None, fold=0) :
+    def __init__(self, is_train=True, transforms=None, fold=0):
         _filenames = np.array(pngs)
         _labelnames = np.array(jsons)
-        
+
         ############# Train 800 ###############
         if is_train:
             # 모든 데이터를 train 데이터로 사용
@@ -65,57 +70,57 @@ class XRayDatasetAll(Dataset):
             # validation 데이터는 비워둡니다.
             filenames = []
             labelnames = []
-        
+
         self.filenames = filenames
         self.labelnames = labelnames
         self.is_train = is_train
         self.transforms = transforms
-    
+
     def __len__(self):
         return len(self.filenames)
-    
+
     def __getitem__(self, item):
         image_name = self.filenames[item]
         image_path = os.path.join(IMAGE_ROOT, image_name)
-        
+
         image = cv2.imread(image_path)
         image = image / 255.
-        
+
         label_name = self.labelnames[item]
         label_path = os.path.join(LABEL_ROOT, label_name)
-        
+
         # (H, W, NC) 모양의 label을 생성합니다.
         label_shape = tuple(image.shape[:2]) + (len(CLASSES), )
         label = np.zeros(label_shape, dtype=np.uint8)
-        
+
         # label 파일을 읽습니다.
         with open(label_path, "r") as f:
             annotations = json.load(f)
         annotations = annotations["annotations"]
-        
+
         # 클래스 별로 처리합니다.
         for ann in annotations:
             c = ann["label"]
             class_ind = CLASS2IND[c]
             points = np.array(ann["points"])
-            
+
             # polygon 포맷을 dense한 mask 포맷으로 바꿉니다.
             class_label = np.zeros(image.shape[:2], dtype=np.uint8)
             cv2.fillPoly(class_label, [points], 1)
             label[..., class_ind] = class_label
-        
+
         if self.transforms is not None:
             inputs = {"image": image, "mask": label} if self.is_train else {"image": image}
             result = self.transforms(**inputs)
-            
+
             image = result["image"]
             label = result["mask"] if self.is_train else label
 
         # to tenser will be done later
         image = image.transpose(2, 0, 1)    # channel first 포맷으로 변경합니다.
         label = label.transpose(2, 0, 1)
-        
+
         image = torch.from_numpy(image).float()
         label = torch.from_numpy(label).float()
-            
+
         return image, label

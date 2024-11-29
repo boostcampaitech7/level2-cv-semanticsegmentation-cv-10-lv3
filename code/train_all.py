@@ -24,12 +24,7 @@ from dataset.XRayDatasetAll import *
 from loss.FocalLoss import FocalLoss
 from model import *
 import segmentation_models_pytorch as smp
-
-# loss
-# from segmentation_models_pytorch.losses import DiceLoss
-
-# model name
-# fcn, unet(unetpp), deeplabv3p
+from torch.cuda.amp import autocast, GradScaler
 
 ############## PARSE ARGUMENT ########################
 
@@ -43,11 +38,11 @@ def parse_args():
     parser.add_argument("--val_every",       type=int,   default=10)
     parser.add_argument("--threshold",       type=float, default=0.5)
     parser.add_argument("--lr",              type=float, default=1e-4)
-    parser.add_argument("--epochs",          type=int,   default=200)
+    parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="unetPP_all.pt")
-    parser.add_argument("--log_name",         type=str,   default="unetPP__all")
+    parser.add_argument("--pt_name",         type=str,   default="unetPP_eff_adamp.pt")
+    parser.add_argument("--log_name",         type=str,   default="unetPP_eff_adamp")
 
     args = parser.parse_args()
     return args
@@ -76,17 +71,17 @@ if not os.path.exists(SAVED_DIR):
 
 
 ############### Augmentation ###############
-
 trian_tf = A.Compose([
     A.Resize(IMAGE_SIZE, IMAGE_SIZE),
-    A.RandomBrightnessContrast(
-        brightness_limit=0.3,
-        contrast_limit=0.3,
-        p=0.5
-    ),
-    A.CLAHE(clip_limit=(1, 4), tile_grid_size=(8, 8), p=0.5)
+    A.HorizontalFlip(p=0.5),
+    A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
+    A.ElasticTransform(alpha=15.0, sigma=2.0, p=0.4),
+    A.GridDistortion(distort_limit=0.2, p=0.4),
+    A.Rotate(limit=30, p=0.3),
+    A.CLAHE(clip_limit=(1, 4), p=0.5),
+    A.RandomBrightnessContrast(brightness_limit=(0.0, 0.3), contrast_limit=0.2, p=0.3),
+    A.GridDropout(ratio=0.4, random_offset=False, holes_number_x=12, holes_number_y=12, p=0.4)
 ])
-
 
 val_tf = A.Compose([
     A.Resize(IMAGE_SIZE, IMAGE_SIZE),
@@ -101,7 +96,7 @@ train_loader = DataLoader(
     dataset=train_dataset,
     batch_size=TRAIN_BATCH_SIZE,
     shuffle=True,
-    num_workers=8,
+    num_workers=2,
     drop_last=True,
 )
 
@@ -138,8 +133,9 @@ def set_seed():
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
-
 # print 파일 기록하기 위한 함수
+
+
 def log_to_file(message, file_path=f"./log/{LOG_NAEM}.txt"):
     with open(file_path, "a") as f:
         f.write(message + "\n")
@@ -165,8 +161,11 @@ def train(model, data_loader, criterion, optimizer):
     print(f'Start training..')
 
     n_class = len(CLASSES)
-    best_loss = float('inf')  # Loss를 기준으로 모델 저장
+    best_loss = float('inf')
     model = model.cuda()
+
+    # GradScaler 초기화
+    scaler = GradScaler()
 
     # 스케줄러 정의
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
@@ -177,25 +176,29 @@ def train(model, data_loader, criterion, optimizer):
 
         for step, (images, masks) in enumerate(data_loader):
             images, masks = images.cuda(), masks.cuda()
+            optimizer.zero_grad()  # Optimizer 초기화
 
-            if MODEL.lower() == "fcn":
-                outputs = model(images)['out']
-            elif MODEL.lower() == "unet":
-                outputs = model(images)
-            elif MODEL.lower() == "deeplabv3p":
-                outputs = model(images)
+            with autocast():  # Mixed Precision Training 적용
+                if MODEL.lower() == "fcn":
+                    outputs = model(images)['out']
+                elif MODEL.lower() == "unet":
+                    outputs = model(images)
+                elif MODEL.lower() == "deeplabv3p":
+                    outputs = model(images)
 
-                output_h, output_w = outputs.size(-2), outputs.size(-1)
-                mask_h, mask_w = masks.size(-2), masks.size(-1)
+                    output_h, output_w = outputs.size(-2), outputs.size(-1)
+                    mask_h, mask_w = masks.size(-2), masks.size(-1)
 
-                if output_h != mask_h or output_w != mask_w:
-                    outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
+                    if output_h != mask_h or output_w != mask_w:
+                        outputs = F.interpolate(outputs, size=(mask_h, mask_w), mode="bilinear", align_corners=True)
 
-            # Loss 계산 및 최적화
-            loss = criterion(outputs, masks)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # 손실 계산
+                loss = criterion(outputs, masks)
+
+            # Scaler를 사용하여 역전파
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             total_loss += loss.item()
 
@@ -238,16 +241,13 @@ def train(model, data_loader, criterion, optimizer):
 
 
 ############### TRAINING SETTINGS 2 ###############
-# smp
 model = smp.UnetPlusPlus(
-    encoder_name="efficientnet-b7",  # 백본
-    encoder_weights="imagenet",     # 사전 학습된 가중치
+    encoder_name="efficientnet-b7",
+    encoder_weights="imagenet",
     in_channels=3,
     classes=29
 )
 
-
-# output class 개수를 dataset에 맞도록 수정합니다.
 if MODEL.lower() == "fcn":
     model.classifier[4] = nn.Conv2d(512, len(CLASSES), kernel_size=1)
 
@@ -255,7 +255,11 @@ if MODEL.lower() == "fcn":
 criterion = BCE_Dice_loss
 
 # Optimizer
-optimizer = optim.AdamW(params=model.parameters(), lr=LR, weight_decay=1e-5)
+optimizer = optim.AdamW(
+    params=model.parameters(),
+    lr=LR,
+    weight_decay=1e-5
+)
 
 # Set_seed
 set_seed()
