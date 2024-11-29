@@ -30,7 +30,7 @@ from model import *
 ############## PARSE ARGUMENT ########################
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name",      type=str,   default="deeplabv3p")
+    parser.add_argument("--model_name",      type=str,   default="HRNet")
     parser.add_argument("--tr_batch_size",   type=int,   default=4)
     parser.add_argument("--val_batch_size",  type=int,   default=1)
     parser.add_argument("--val_every",       type=int,   default=5)
@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="fnc_base.pt")
+    parser.add_argument("--pt_name",         type=str,   default="HRNet_base.pt")
 
     args = parser.parse_args()
     return args
@@ -226,7 +226,8 @@ def validation(epoch, model, data_loader, criterion, thr=TH):
 # model = models.segmentation.fcn_resnet50(pretrained=True) # fcn base
 # model = UNet(num_classes=len(CLASSES)) # unet base
 # model = UNetPlusPlus(out_ch=len(CLASSES), supervision=False) # unet++ base
-model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES))  # deeplabv3p base
+# model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES))  # deeplabv3p base
+model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES))  # HRNet base
 
 
 # output class 개수를 dataset에 맞도록 수정합니다.
