@@ -3,3 +3,8 @@ submissionhj/
 checkpoints/
 streamlit/
 *.pyc
+*_logits/
+*.csv
+*.ipynb
+soft_ensemble/
+code/model/HRNet.py
