@@ -40,16 +40,30 @@ IND2CLASS = {v: k for k, v in CLASS2IND.items()}
 
 SAVED_DIR = "checkpoints/result_unet/"
 
-model = smp.UnetPlusPlus(
+"""model = smp.UnetPlusPlus(
     encoder_name="efficientnet-b7",  # EfficientNet-L2 백본 사용
     encoder_weights="imagenet",     # 사전 학습된 가중치 설정
     in_channels=3,                       # 입력 채널 (RGB 이미지)
     classes=29                           # 출력 클래스 수
-)
+)"""
+import torch.nn as nn
+from transformers import UperNetForSemanticSegmentation
 
-model = torch.load(os.path.join(SAVED_DIR, "unetPP_eff_1920.pt"))
+class UperNet_ConvNext_xlarge(nn.Module):
+    def __init__(self, num_classes=29):
+        super(UperNet_ConvNext_xlarge, self).__init__()
+        self.model = UperNetForSemanticSegmentation.from_pretrained(
+            "openmmlab/upernet-convnext-xlarge", num_labels=num_classes, ignore_mismatched_sizes=True
+        )
+        #self.model.gradient_checkpointing_enable()
 
-IMAGE_ROOT = "./data/test/"
+    def forward(self, image):
+        outputs = self.model(pixel_values=image)
+        return outputs.logits
+
+model = torch.load(os.path.join(SAVED_DIR, "convnext_kfold1.pt"))
+
+IMAGE_ROOT = "/data/ephemeral/home/data/test/DCM"
 
 pngs = {
     os.path.relpath(os.path.join(root, fname), start=IMAGE_ROOT)
@@ -197,6 +211,6 @@ df = pd.DataFrame({
     "rle": rles,
 })
 
-df.to_csv("unetpp_eff_1920.csv", index=False)
+df.to_csv("convnext_kfold1.csv", index=False)
 
 df["image_name"].nunique()

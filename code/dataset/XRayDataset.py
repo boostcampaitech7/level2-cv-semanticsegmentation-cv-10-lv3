@@ -51,9 +51,6 @@ assert len(pngs_fn_prefix - jsons_fn_prefix) == 0
 pngs = sorted(pngs)
 jsons = sorted(jsons)
 
-# fold_index를 명시적으로 설정
-fold_index = 1  # 실행할 Fold 번호 (0, 1, 2, 3, 4 중 하나)  
-
 class XRayDataset(Dataset):
     def __init__(self, fold_idx, is_train=True, transforms=None):
         _filenames = np.array(pngs)
@@ -70,7 +67,7 @@ class XRayDataset(Dataset):
         
         # 전체 데이터의 20%를 validation data로 쓰기 위해 `n_splits`를
         # 5으로 설정하여 KFold를 수행합니다.
-        gkf = GroupKFold(n_splits=5)
+        gkf = GroupKFold(n_splits=4) # 4fold로 진행 -> n_splits=4로 변경
         
         filenames = []
         labelnames = []
