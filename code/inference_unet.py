@@ -38,9 +38,9 @@ CLASSES = [
 CLASS2IND = {v: i for i, v in enumerate(CLASSES)}
 IND2CLASS = {v: k for k, v in CLASS2IND.items()}
 
-SAVED_DIR = "/data/ephemeral/home/git/code/checkpoints/result_unet/"
+SAVED_DIR = "/data/ephemeral/home/level2-cv-semanticsegmentation-cv-10-lv3/code/checkpoints/result_unet/"
 
-model = torch.load(os.path.join(SAVED_DIR, "unet3p_focal4dice6.pt"))
+model = torch.load(os.path.join(SAVED_DIR, "unet3p_focal3dice7_1024.pt"))
 
 IMAGE_ROOT = "/data/ephemeral/home/data/test/DCM/"
 
@@ -163,6 +163,6 @@ df = pd.DataFrame({
     "rle": rles,
 })
 
-df.to_csv("unet3p_focal4dice6.csv", index=False)
+df.to_csv("unet3p_focal3dice7_1024.csv", index=False)
 
 df["image_name"].nunique()

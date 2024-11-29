@@ -27,6 +27,8 @@ from loss.FocalLoss import FocalLoss
 from model import *
 from transformers import UperNetForSemanticSegmentation
 
+from torch.cuda.amp import GradScaler, autocast
+
 # model name
 # fcn, unet(unetpp), deeplabv3p
 
@@ -70,8 +72,9 @@ if not os.path.exists(SAVED_DIR):
 
 
 ############### Augmentation ###############
-"""train_tf = A.Compose([
-    A.Resize(512, 512),
+"""
+train_tf = A.Compose([
+    A.Resize(1024, 1024),
     A.HorizontalFlip(p=0.5), 
     A.GaussianBlur(blur_limit=(3, 7), sigma_limit=(0.1, 2), p=0.5),
     A.ElasticTransform(alpha=1, sigma=50, p=0.5),
@@ -79,7 +82,7 @@ if not os.path.exists(SAVED_DIR):
 ])
 
 valid_tf = A.Compose([
-    A.Resize(512, 512)
+    A.Resize(1024, 1024)
 ])
 """
 class CustomAugmentation_final:
