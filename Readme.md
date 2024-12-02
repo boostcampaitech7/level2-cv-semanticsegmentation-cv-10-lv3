@@ -4,7 +4,6 @@
 
 손 뼈 분할(segmentation)은 질병 진단, 수술 계획, 의료 교육 등 다양한 의료 분야에서 중요한 역할을 합니다. 본 프로젝트는 고해상도(2048x2048) X-ray 이미지에서 29개의 손 뼈 레이블을 분할하는 작업에 초점을 맞췄습니다. 데이터 분석(EDA)부터 다양한 증강 기법, 슬라이딩 윈도우, 이미지 크롭 및 앙상블 기법까지 포괄적인 접근을 통해 성능을 개선했습니다.
 
----
 
 ## EDA
 
@@ -20,7 +19,6 @@
 - `ID274~321`: 일반적인 포즈와 다른 자세를 취한 데이터.
 - 손등 부분에 겹치는 클래스가 다수 존재하며, 특히 Trapezoid, Pisiform 클래스의 정확도가 낮음 (0.88).
 
----
 
 ## Methods
 
@@ -45,7 +43,6 @@
 - **Resize**  
   이미지 크기를 512에서 1024 또는 2048로 조정하여 학습 진행.
 
----
 
 ## Modeling
 
@@ -69,7 +66,6 @@ optim.AdamW(params=model.parameters(), lr=LR, weight_decay=1e-5)
 CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 ```
 
----
 
 ## Post-Processing
 
@@ -77,7 +73,6 @@ CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 
 - **HorizontalFlip()**을 적용하여 성능이 0.0006 향상됨.
 
----
 
 ## Ensemble
 
@@ -92,7 +87,6 @@ CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 - 각 모델을 기반으로 5-Fold 실험을 수행.
 - Hard Voting 및 Soft Voting 기법을 통해 성능 변동성을 줄이고 일관된 성능을 확보.
 
----
 
 ## Conclusion
 
