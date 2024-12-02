@@ -5,7 +5,6 @@ import datetime
 
 # external library
 import numpy as np
-import pandas as pd
 from tqdm.auto import tqdm
 import albumentations as A
 import argparse
@@ -16,21 +15,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import models
 
 # model, dataset
 from dataset.XRayDataset import *
 from dataset.XRayDatasetAll import *
-from loss.FocalLoss import FocalLoss
 from model import *
 import segmentation_models_pytorch as smp
+# from loss.FocalLoss import FocalLoss
 
-# model name
-# fcn, unet(unetpp), deeplabv3p
 
 ############## PARSE ARGUMENT ########################
-
-
+# model name
+# fcn, unet(unetpp), deeplabv3p
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",      type=str,   default="unet")
@@ -127,15 +123,14 @@ def save_model(model, file_name=PT_NAME):
 def set_seed():
     torch.manual_seed(RANDOM_SEED)
     torch.cuda.manual_seed(RANDOM_SEED)
-    torch.cuda.manual_seed_all(RANDOM_SEED)  # if use multi-GPU
+    torch.cuda.manual_seed_all(RANDOM_SEED)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
 
-# print 파일 기록하기 위한 함수
 
-
+# log_file
 def log_to_file(message, file_path=f"./log/{LOG_NAEM}.txt"):
     with open(file_path, "a") as f:
         f.write(message + "\n")
@@ -156,16 +151,13 @@ def BCE_Dice_loss(pred, target, bce_weight=0.5):
     loss = bce * bce_weight + dice * (1 - bce_weight)
     return loss
 
+
 ############### TRAIN ###############
-
-
 def train(model, data_loader, val_loader, criterion, optimizer):
     print(f'Start training..')
 
     n_class = len(CLASSES)
     best_dice = 0.
-
-    # 스케줄러 정의
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 
     for epoch in range(NUM_EPOCHS):
@@ -203,7 +195,7 @@ def train(model, data_loader, val_loader, criterion, optimizer):
                 print(log_message)
                 log_to_file(log_message)
 
-        # 학습률 스케줄러 업데이트
+        # scheduler update
         scheduler.step()
 
         # 현재 학습률 출력 및 기록

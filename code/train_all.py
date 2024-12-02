@@ -5,8 +5,6 @@ import datetime
 
 # external library
 import numpy as np
-import pandas as pd
-from tqdm.auto import tqdm
 import albumentations as A
 import argparse
 
@@ -16,19 +14,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import models
 
 # model, dataset
 from dataset.XRayDataset import *
 from dataset.XRayDatasetAll import *
-from loss.FocalLoss import FocalLoss
 from model import *
 import segmentation_models_pytorch as smp
 from torch.cuda.amp import autocast, GradScaler
 
+
 ############## PARSE ARGUMENT ########################
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",      type=str,   default="unet")
@@ -41,8 +36,8 @@ def parse_args():
     parser.add_argument("--epochs",          type=int,   default=100)
     parser.add_argument("--fold",            type=int,   default=0)
     parser.add_argument("--seed",            type=int,   default=21)
-    parser.add_argument("--pt_name",         type=str,   default="unetPP_eff_adamp.pt")
-    parser.add_argument("--log_name",         type=str,   default="unetPP_eff_adamp")
+    parser.add_argument("--pt_name",         type=str,   default="unetPP.pt")
+    parser.add_argument("--log_name",         type=str,   default="unetPP")
 
     args = parser.parse_args()
     return args
@@ -89,8 +84,6 @@ val_tf = A.Compose([
 
 ############### Dataset ###############
 train_dataset = XRayDatasetAll(is_train=True, transforms=trian_tf, fold=FOLD)
-valid_dataset = XRayDatasetAll(is_train=False, transforms=val_tf, fold=FOLD)
-
 
 train_loader = DataLoader(
     dataset=train_dataset,
@@ -98,14 +91,6 @@ train_loader = DataLoader(
     shuffle=True,
     num_workers=2,
     drop_last=True,
-)
-
-valid_loader = DataLoader(
-    dataset=valid_dataset,
-    batch_size=VAL_BATCH_SIZE,
-    shuffle=False,
-    num_workers=0,
-    drop_last=False
 )
 
 
@@ -132,8 +117,6 @@ def set_seed():
     torch.backends.cudnn.benchmark = False
     np.random.seed(RANDOM_SEED)
     random.seed(RANDOM_SEED)
-
-# print 파일 기록하기 위한 함수
 
 
 def log_to_file(message, file_path=f"./log/{LOG_NAEM}.txt"):
@@ -164,10 +147,9 @@ def train(model, data_loader, criterion, optimizer):
     best_loss = float('inf')
     model = model.cuda()
 
-    # GradScaler 초기화
     scaler = GradScaler()
 
-    # 스케줄러 정의
+    # 스케줄러
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-8)
 
     for epoch in range(NUM_EPOCHS):
@@ -178,7 +160,7 @@ def train(model, data_loader, criterion, optimizer):
             images, masks = images.cuda(), masks.cuda()
             optimizer.zero_grad()  # Optimizer 초기화
 
-            with autocast():  # Mixed Precision Training 적용
+            with autocast():
                 if MODEL.lower() == "fcn":
                     outputs = model(images)['out']
                 elif MODEL.lower() == "unet":
@@ -195,7 +177,6 @@ def train(model, data_loader, criterion, optimizer):
                 # 손실 계산
                 loss = criterion(outputs, masks)
 
-            # Scaler를 사용하여 역전파
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -212,23 +193,20 @@ def train(model, data_loader, criterion, optimizer):
                 print(log_message)
                 log_to_file(log_message)
 
-        # 학습률 스케줄러 업데이트
+        # scheduler update
         scheduler.step()
 
-        # 현재 학습률 출력 및 기록
         current_lr = scheduler.get_last_lr()[0]
         if epoch % 10 == 0:
             log_message = f"Epoch {epoch + 1}, Current LR: {current_lr:.6f}"
             print(log_message)
             log_to_file(log_message)
 
-        # 현재 epoch의 평균 loss 계산
         avg_loss = total_loss / len(data_loader)
         log_message = f"Epoch {epoch + 1}, Average Loss: {avg_loss:.4f}"
         print(log_message)
         log_to_file(log_message)
 
-        # Loss를 기준으로 모델 저장
         if avg_loss < best_loss:
             log_message = (
                 f"Best performance at epoch: {epoch + 1}, Loss {best_loss:.4f} -> {avg_loss:.4f}\n"

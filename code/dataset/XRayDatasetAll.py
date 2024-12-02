@@ -11,13 +11,8 @@ import torch
 from torch.utils.data import Dataset
 
 
-# IMAGE_ROOT = "./data/train/DCM"
-# LABEL_ROOT = "./data/train/outputs_json"
-
-# Pseudo
-IMAGE_ROOT = "./data/train_pseudo/DCM"
-LABEL_ROOT = "./data/train_pseudo/outputs_json"
-
+IMAGE_ROOT = "./data/train/DCM"
+LABEL_ROOT = "./data/train/outputs_json"
 
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
@@ -63,11 +58,11 @@ class XRayDatasetAll(Dataset):
 
         ############# Train 800 ###############
         if is_train:
-            # 모든 데이터를 train 데이터로 사용
+            # 모든 train 데이터
             filenames = list(_filenames)
             labelnames = list(_labelnames)
         else:
-            # validation 데이터는 비워둡니다.
+            # validation 데이터
             filenames = []
             labelnames = []
 
@@ -89,22 +84,17 @@ class XRayDatasetAll(Dataset):
         label_name = self.labelnames[item]
         label_path = os.path.join(LABEL_ROOT, label_name)
 
-        # (H, W, NC) 모양의 label을 생성합니다.
         label_shape = tuple(image.shape[:2]) + (len(CLASSES), )
         label = np.zeros(label_shape, dtype=np.uint8)
 
-        # label 파일을 읽습니다.
         with open(label_path, "r") as f:
             annotations = json.load(f)
         annotations = annotations["annotations"]
 
-        # 클래스 별로 처리합니다.
         for ann in annotations:
             c = ann["label"]
             class_ind = CLASS2IND[c]
             points = np.array(ann["points"])
-
-            # polygon 포맷을 dense한 mask 포맷으로 바꿉니다.
             class_label = np.zeros(image.shape[:2], dtype=np.uint8)
             cv2.fillPoly(class_label, [points], 1)
             label[..., class_ind] = class_label
@@ -117,7 +107,7 @@ class XRayDatasetAll(Dataset):
             label = result["mask"] if self.is_train else label
 
         # to tenser will be done later
-        image = image.transpose(2, 0, 1)    # channel first 포맷으로 변경합니다.
+        image = image.transpose(2, 0, 1)
         label = label.transpose(2, 0, 1)
 
         image = torch.from_numpy(image).float()

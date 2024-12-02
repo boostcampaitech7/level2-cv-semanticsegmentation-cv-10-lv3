@@ -1,30 +1,20 @@
 # python native
 import os
-import json
-import random
-import datetime
-from functools import partial
 
 # external library
 import cv2
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
-from sklearn.model_selection import GroupKFold
 import albumentations as A
+import ttach as tta
 
 # torch
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from torchvision import models
 import segmentation_models_pytorch as smp
 
-# visualization
-import matplotlib.pyplot as plt
-import ttach as tta
 
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
@@ -34,11 +24,10 @@ CLASSES = [
     'Trapezoid', 'Capitate', 'Hamate', 'Scaphoid', 'Lunate',
     'Triquetrum', 'Pisiform', 'Radius', 'Ulna',
 ]
-
 CLASS2IND = {v: i for i, v in enumerate(CLASSES)}
 IND2CLASS = {v: k for k, v in CLASS2IND.items()}
-
 SAVED_DIR = "checkpoints/result_unet/"
+IMAGE_ROOT = "./data/test/"
 
 model = smp.UnetPlusPlus(
     encoder_name="efficientnet-b7",
@@ -49,7 +38,6 @@ model = smp.UnetPlusPlus(
 
 model = torch.load(os.path.join(SAVED_DIR, "unetPP_base.pt"))
 
-IMAGE_ROOT = "./data/test/"
 
 pngs = {
     os.path.relpath(os.path.join(root, fname), start=IMAGE_ROOT)
@@ -113,14 +101,12 @@ def test_with_tta(model, data_loader, thr=0.6):
     model = model.cuda()
     model.eval()
 
-    # TTA 변환 정의
+    # TTA 정의
     tta_transforms = tta.Compose(
         [
             tta.HorizontalFlip(),
         ]
     )
-
-    # TTA 모델 생성
     tta_model = tta.SegmentationTTAWrapper(model, tta_transforms)
 
     rles = []

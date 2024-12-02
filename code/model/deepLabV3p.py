@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 반복적으로 나오는 구조를 쉽게 만들기 위해서 정의한 유틸리티 함수 입니다
-
 
 def conv_block(in_ch, out_ch, k_size, stride, padding, dilation=1, relu=True):
     block = []
