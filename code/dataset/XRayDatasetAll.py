@@ -14,7 +14,6 @@ from torch.utils.data import Dataset
 IMAGE_ROOT = "./data/train/DCM"
 LABEL_ROOT = "./data/train/outputs_json"
 
-
 CLASSES = [
     'finger-1', 'finger-2', 'finger-3', 'finger-4', 'finger-5',
     'finger-6', 'finger-7', 'finger-8', 'finger-9', 'finger-10',
@@ -52,30 +51,20 @@ pngs = sorted(pngs)
 jsons = sorted(jsons)
 
 
-class XRayDataset(Dataset):
+class XRayDatasetAll(Dataset):
     def __init__(self, is_train=True, transforms=None, fold=0):
         _filenames = np.array(pngs)
         _labelnames = np.array(jsons)
 
-        groups = [os.path.dirname(fname) for fname in _filenames]
-        ys = [0 for fname in _filenames]
-        gkf = GroupKFold(n_splits=5)
-
-        filenames = []
-        labelnames = []
-        for i, (x, y) in enumerate(gkf.split(_filenames, ys, groups)):
-            if is_train:
-                if i == fold:
-                    continue
-
-                filenames += list(_filenames[y])
-                labelnames += list(_labelnames[y])
-
-            else:
-                filenames = list(_filenames[y])
-                labelnames = list(_labelnames[y])
-
-                break
+        ############# Train 800 ###############
+        if is_train:
+            # 모든 train 데이터
+            filenames = list(_filenames)
+            labelnames = list(_labelnames)
+        else:
+            # validation 데이터
+            filenames = []
+            labelnames = []
 
         self.filenames = filenames
         self.labelnames = labelnames

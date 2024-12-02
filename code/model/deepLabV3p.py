@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 반복적으로 나오는 구조를 쉽게 만들기 위해서 정의한 유틸리티 함수 입니다
+
 def conv_block(in_ch, out_ch, k_size, stride, padding, dilation=1, relu=True):
     block = []
     block.append(nn.Conv2d(in_ch, out_ch, k_size, stride, padding, dilation, bias=False))
@@ -15,8 +15,8 @@ def conv_block(in_ch, out_ch, k_size, stride, padding, dilation=1, relu=True):
 class DepthwiseSeparableConv2d(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, stride, dilation=1):
         super().__init__()
-        self.depthwise = nn.Conv2d(in_ch, in_ch, kernel_size=kernel_size, stride=stride, 
-                                   padding=(kernel_size // 2) * dilation, dilation=dilation, 
+        self.depthwise = nn.Conv2d(in_ch, in_ch, kernel_size=kernel_size, stride=stride,
+                                   padding=(kernel_size // 2) * dilation, dilation=dilation,
                                    groups=in_ch, bias=False)
         self.pointwise = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(out_ch)
@@ -31,7 +31,7 @@ class DepthwiseSeparableConv2d(nn.Module):
 class XceptionBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride=1, dilation=1, exit_flow=False, use_1st_relu=True):
         super().__init__()
-        if in_ch != out_ch or stride !=1:
+        if in_ch != out_ch or stride != 1:
             self.skip = nn.Sequential(
                 nn.Conv2d(in_ch, out_ch, 1, stride=stride, bias=False),
                 nn.BatchNorm2d(out_ch)
@@ -143,14 +143,11 @@ class AtrousSpatialPyramidPooling(nn.Module):
 
         # Concatenate all features
         out = torch.cat([x1, x2, x3, x4, image_feature], dim=1)
-        
+
         # Adjust output channels to 256
         out = self.output_conv(out)
-        
+
         return out
-
-
-
 
 
 class Decoder(nn.Module):
@@ -183,10 +180,10 @@ class DeepLabV3p(nn.Module):
     def forward(self, x):
         # Backbone
         out, features = self.backbone(x)
-        
+
         # ASPP
         out = self.aspp(out)
-        
+
         # Decoder
         out = self.decoder(out, features)
         return out

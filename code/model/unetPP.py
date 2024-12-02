@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 
+
 class conv_block_nested(nn.Module):
     def __init__(self, in_ch, mid_ch, out_ch):
         super(conv_block_nested, self).__init__()
@@ -21,15 +22,15 @@ class conv_block_nested(nn.Module):
         output = self.activation(x)
         return output
 
+
 class UNetPlusPlus(nn.Module):
     def __init__(self, in_ch=3, out_ch=1, n1=64, height=512, width=512, supervision=True):
         super(UNetPlusPlus, self).__init__()
-        # TODO: `conv_block_nested`를 이용하여 UNet++의 구조를 구현합니다
-
         filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16]
 
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.Up = nn.ModuleList([nn.Upsample(size=(height//(2**c), width//(2**c)), mode='bilinear', align_corners=True) for c in range(4)])
+        self.Up = nn.ModuleList([nn.Upsample(size=(height//(2**c), width//(2**c)),
+                                mode='bilinear', align_corners=True) for c in range(4)])
         self.supervision = supervision
 
         self.conv0_0 = conv_block_nested(in_ch, filters[0], filters[0])

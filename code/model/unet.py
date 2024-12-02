@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
 
+
 class UNet(nn.Module):
     def __init__(self, num_classes):
         super(UNet, self).__init__()
+
         def CBR2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True):
             layers = []
             layers += [nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
@@ -14,8 +16,6 @@ class UNet(nn.Module):
             cbr = nn.Sequential(*layers)
             return cbr
 
-        # TODO: 상단에 정의된 CBR2d 클래스를 이용하여 UNet을 구성하는
-        #    encoder, decoder, pooling layer, upconv layer를 구현합니다
         self.enc1_1 = CBR2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
         self.enc1_2 = CBR2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
         self.pool1 = nn.MaxPool2d(kernel_size=2)
@@ -34,26 +34,31 @@ class UNet(nn.Module):
 
         self.enc5_1 = CBR2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=1, bias=True)
         self.enc5_2 = CBR2d(in_channels=1024, out_channels=1024, kernel_size=3, stride=1, padding=1, bias=True)
-        self.unpool4 = nn.ConvTranspose2d(in_channels=1024, out_channels=512, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool4 = nn.ConvTranspose2d(in_channels=1024, out_channels=512,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec4_2 = CBR2d(in_channels=1024, out_channels=512, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec4_1 = CBR2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool3 = nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool3 = nn.ConvTranspose2d(in_channels=512, out_channels=256,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec3_2 = CBR2d(in_channels=512, out_channels=256, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec3_1 = CBR2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool2 = nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool2 = nn.ConvTranspose2d(in_channels=256, out_channels=128,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec2_2 = CBR2d(in_channels=256, out_channels=128, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec2_1 = CBR2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
 
-        self.unpool1 = nn.ConvTranspose2d(in_channels=64, out_channels=64, kernel_size=2, stride=2, padding=0, bias=True)
+        self.unpool1 = nn.ConvTranspose2d(in_channels=64, out_channels=64,
+                                          kernel_size=2, stride=2, padding=0, bias=True)
 
         self.dec1_2 = CBR2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
         self.dec1_1 = CBR2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True)
-        self.score_fr = nn.Conv2d(in_channels=64, out_channels=num_classes, kernel_size=1, stride=1, padding=0, bias=True) # Output Segmentation map
+        self.score_fr = nn.Conv2d(in_channels=64, out_channels=num_classes, kernel_size=1,
+                                  stride=1, padding=0, bias=True)  # Output Segmentation map
 
     def forward(self, x):
         enc1_1 = self.enc1_1(x)
