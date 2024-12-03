@@ -9,7 +9,7 @@
 - **의료 장비 제작** : 인공 관절, 임플란트 등의 맞춤 제작
 - **의료 교육** : 뼈 구조 학습 및 수술 시뮬레이션
 
-<img src="https://github.com/user-attachments/assets/a4250715-2b38-44d5-8663-f07e753d85ef" alt="image" width="500"/>
+<img src="https://github.com/user-attachments/assets/a4250715-2b38-44d5-8663-f07e753d85ef" alt="image" width="300"/>
 
 ## Member
 <table>
