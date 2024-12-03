@@ -63,6 +63,8 @@
 - 손등 뼈(Trapezoid, Pisiform 등) 간 겹침이 발생하며, 해당 클래스의 정확도가 다른 클래스보다 낮음(Val acc **0.90**)
 - 손가락 끝 부분 (f1, f4, f8, ,f12, f16) 성능이 낮음 (Val acc **0.90**)
 
+<img src="https://github.com/user-attachments/assets/db6a9467-acc1-40a1-af2e-ad6b8f805036" alt="image" width="500"/>
+
 ### 문제 정의
 
 - 손이 휘어진 데이터를 대응하기 위해 Rotate 증강 (limit=15,30) 으로 적용
