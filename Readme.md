@@ -1,7 +1,7 @@
 # Hand Bone Segmentation Project
 
 
-## Overview
+## 📋 Overview  
 
 뼈는 우리 몸의 구조와 기능에 중요한 영향을 미치기 때문에, 정확한 뼈 분할은 의료 진단 및 치료 계획을 개발하는 데 필수적이다. Bone Segmentation은 인공지능 분야에서 중요한 응용 분야 중 하나로, 특히, 딥러닝 기술을 이용한 뼈 Segmentation은 많은 연구가 이루어지고 있으며, 다양한 목적으로 도움을 줄 수 있다.
 - **질병 진단** :  손 뼈 변형, 골절 등 이상 탐지
@@ -11,7 +11,9 @@
 
 <img src="https://github.com/user-attachments/assets/a4250715-2b38-44d5-8663-f07e753d85ef" alt="image" width="300"/>
 
-## Member
+<br><br>
+
+## 👥 Member  
 <table>
     <tr height="160px">
         <td align="center" width="150px">
@@ -47,8 +49,9 @@
     </tr>
 </table>  
 
+<br><br>
 
-## EDA
+## 🔍 EDA  
 
 ### 데이터셋 개요
 
@@ -72,8 +75,9 @@
 - 클래스 간 경계 개선을 위해 ElasticTransform 추가 증강 적용
 - 작고 겹치는 클래스의 성능 향상을 위해 이미지 크기를 512에서 1024, 2048로 점진적으로 확대하며 학습을 진행
 
+<br><br>
 
-## Methods
+## 🛠️ Methods 
 
 ### Model Selection
 
@@ -153,8 +157,9 @@ Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터
 | BaseModel | 97.00 % |
 | PseudoModel | 97.27 % |
 
+<br><br>
 
-## Modeling
+## 🧠 Modeling
 
 ### Resolution
 
@@ -185,7 +190,9 @@ Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터
 | DeepLabV3+ | 1024 | 96.63 % |
 | DeepLabV3+ | 2048 | 97.07 % |
 
-## Loss
+<br><br>
+
+## ⚖️ Loss 
 
 **문제**
 
@@ -222,8 +229,9 @@ Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터
 
 작은 객체 탐지 성능 향상을 위해 Focal Loss와 Dice Loss의 비율 조정이 효과적임
 
+<br><br>
 
-## Scheduler
+## 📈 Scheduler  
 
 **Cosine Annealing Learning Rate Scheduler 채택**
 
@@ -236,8 +244,9 @@ Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터
 - **UNet++** 기준, 베이스라인 대비 0.**01 % 성능 향상** 확인
 - Cosine Annealing Scheduler를 최종적으로 채택
 
+<br><br>
 
-## Optimizer
+## 🛠️ Optimizer 
 
 AdamW를 최종적으로 채택하였다. 과적합 방지에 더 효과적인 AdamW를 사용하면 일반화 성능이 향상하여 성능이 더 좋다고 판단했다. 
 
@@ -247,9 +256,9 @@ AdamW를 최종적으로 채택하였다. 과적합 방지에 더 효과적인 A
 | --- | --- |
 | AdamW | 95.53 % |
 
+<br><br>
 
-
-## Post-Processing
+## 🧹 Post-Processing  
 
 CRF (Conditional Random Field)
 
@@ -269,13 +278,15 @@ CRF는 segmentation 모델의 출력(확률 맵)을 기반으로 공간 및 색�
 
 CRF는 픽셀 단위의 분류 오류와 계단 현상을 해결하려는 목적에서 도입되었으나, 적절한 하이퍼파라미터 조정이 부족하여 성능 개선에 실패했다. 특히, 과도한 smoothing으로 인해 성능 저하와 데이터 처리 문제를 야기했다.
 
+<br><br>
 
-
-## TTA
+## 🔄 TTA  
 
 다양한 TTA를 실험했지만 HorizontalFlip 만이 기존보다 dice가 0.06 % 상승하는 유의미한 결과를 보여주어 최종 TTA에는 HorizontalFlip만을 적용하였다.
 
-## Ensemble
+<br><br>
+
+## 🤝 Ensemble 
 
 모델 실험에서 성능이 우수했던 모델들을 선정하여 **K-Fold**를 진행한 뒤, 이를 기반으로 **Soft Voting**, **Hard Voting**, **Classwise Ensemble** 등 다양한 앙상블 방법을 실험했다.
 
@@ -296,12 +307,15 @@ Final Ensemble
 
 <img src="https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a" alt="image" width="800"/>
 
-## Conclusion
+<br><br>
+
+## 🎯 Conclusion  
 
 X-ray 손 뼈 분할의 주요 과제를 해결하기 위해 다양한 증강 기법, 모델 아키텍처, 앙상블 기법을 적용했다. 특히, 원본 이미지 학습 모델 기반 Classwise Ensemble 기법은 손등 뼈와 같은 어려운 영역에서 성능 향상을 이끌었다. 또한, SOTA 같은 무거운 모델을 낮은 해상도로 학습하는 것보다 가벼운 모델을 높은 해상도로 학습하는 것이 본 대회 성능 향상에 매우 중요했음을 알게 되었다. 향후 연구에서는 도메인 지식을 활용한 더 정교한 전처리 및 후처리 기법을 적용하여 더욱 높은 성능을 목표로 할 것이다.
 
+<br><br>
 
-## 최종 성과
+## 🏆 최종 성과  
 
 - Public Dice Score: 97.56%
 <img src="https://github.com/user-attachments/assets/7c949937-0bfa-42cc-b509-67addf38b380" alt="image" width="500"/>
@@ -309,7 +323,9 @@ X-ray 손 뼈 분할의 주요 과제를 해결하기 위해 다양한 증강 �
 - Private Dice Score: 97.64 %
 <img src="https://github.com/user-attachments/assets/a1eb390a-a82f-4f8f-87c9-a38f537f6d74" alt="image" width="500"/>
 
-## Reference
+<br><br>
+
+## 📚 Reference  
 
 - [1] Code for ICASSP 2020 paper ‘UNet 3+: A full-scale connected unet for medical image segmentation https://github.com/ZJUGiveLab/UNet-Version/tree/master
 - [2] Python wrapper to Philipp Krähenbühl's dense (fully connected) CRFs with gaussian edge potentials https://github.com/lucasb-eyer/pydensecrf
