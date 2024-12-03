@@ -50,13 +50,13 @@
 
 ## EDA
 
-#### 데이터셋 개요
+### 데이터셋 개요
 
 - **구성** : 총 2048x2048 해상도의 X-ray 이미지로 구성된 데이터셋, 양손 모두 포함
 - **클래스** : 29개의 손 뼈 레이블 포함
 - **구조** : 모든 데이터가 좌우 손으로 쌍을 이룸
 
-#### 특징
+### 특징
 
 - ID363 데이터는 악세서리(반지)를 착용하고 있음
 - 일부 데이터(ID274~321)는 일반적인 손 자세와 다른 포즈를 취한 데이터
@@ -65,7 +65,7 @@
 
 <img src="https://github.com/user-attachments/assets/db6a9467-acc1-40a1-af2e-ad6b8f805036" alt="image" width="500"/>
 
-#### 문제 정의
+### 문제 정의
 
 - 손이 휘어진 데이터를 대응하기 위해 Rotate 증강 (limit=15,30) 으로 적용
 - 손등 부분을 Crop하여 모델이 해당 영역을 집중적으로 학습할 수 있도록 데이터 전처리 및 학습 과정 설계
@@ -75,7 +75,7 @@
 
 ## Methods
 
-#### Model Selection
+### Model Selection
 
 | 모델 | Image size | Epoch | Time | Score |
 | --- | --- | --- | --- | --- |
@@ -84,7 +84,7 @@
 
 위의 2개 모델 간 성능 차이는 약 0.2%로 차이가 있었으며, 학습 시간 역시 약 **40분 차이**에 불과하여 **Base 모델**로 UNet++을 선정하고 다양한 실험을 진행했습니다. 반면, 다른 모델(Segformer, Convnext, DeepLab3v+)들은 학습 시간이 **6~7시간** 정도 소요되어 Base 모델에서 제외하였다.
 
-#### Augmentation
+### Augmentation
 Base UNet++ 모델을 기준으로 Augmentation 기법을 하나씩 변경하며 단계적으로 실험
 | **Augmentation**         | **Condition**                                                            | **Epoch** | **Score**   | **Result**   |
 |---------------------------|-------------------------------------------------------------------------|----------|-------------|--------------|
@@ -104,7 +104,7 @@ EDA 과정에서 발견된 문제점인 **손등 뼈 영역의 성능 저하**�
 
 이에 따라, 새로운 접근으로 **Sliding Window**와 **Image Crop**을 적용하여 학습을 진행했다. Sliding Window는 이미지를 타일로 분할해 학습하고, Image Crop은 손등 중심으로 특정 영역을 잘라 학습에 집중하도록 하여 성능 향상을 도모했다.
 
-#### Sliding Window, Image Crop 학습 실험
+### Sliding Window, Image Crop 학습 실험
 
 기존의 Crop 기반 Augmentation은 성능이 저하되는 결과를 보였고, **손등 뼈의 정확도 향상**을 목표로 새로운 방식의 Crop 기법을 도입하여 실험을 진행했다.
 
@@ -144,7 +144,7 @@ UNet++, SegFormer B4, ConvNext XL에 Augmentation을 결합하여 최종 학습 
 
 Crop 후 학습한 이미지 결과로 대체한 결과 성능이 증가하였음을 알 수 있었다.
 
-#### Pseudo labeling
+### Pseudo labeling
 
 Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터로 추가**하여 모델의 일반화 성능과 정확도를 0.27% 향상시켰다.
 
@@ -156,7 +156,7 @@ Pseudo Labeling을 활용해 **레이블이 없는 데이터를 학습 데이터
 
 ## Modeling
 
-#### Resolution
+### Resolution
 
 **메모리 문제 해결**
 
