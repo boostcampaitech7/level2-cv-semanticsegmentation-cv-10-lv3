@@ -303,8 +303,10 @@ X-ray 손 뼈 분할의 주요 과제를 해결하기 위해 다양한 증강 �
 ## 최종 성과
 
 - Public Dice Score: 97.56%
-- Private Dice Score: 97.64 %
+<img src="https://github.com/user-attachments/assets/7c949937-0bfa-42cc-b509-67addf38b380" alt="image" width="500"/>
 
+- Private Dice Score: 97.64 %
+<img src="https://github.com/user-attachments/assets/a1eb390a-a82f-4f8f-87c9-a38f537f6d74" alt="image" width="500"/>
 
 ## Reference
 
