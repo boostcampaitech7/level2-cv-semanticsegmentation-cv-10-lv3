@@ -1,7 +1,7 @@
 # Hand Bone Segmentation Project
 
 
-## Overview
+<h2 style="color:blue;">Overview</h2>
 
 뼈는 우리 몸의 구조와 기능에 중요한 영향을 미치기 때문에, 정확한 뼈 분할은 의료 진단 및 치료 계획을 개발하는 데 필수적이다. Bone Segmentation은 인공지능 분야에서 중요한 응용 분야 중 하나로, 특히, 딥러닝 기술을 이용한 뼈 Segmentation은 많은 연구가 이루어지고 있으며, 다양한 목적으로 도움을 줄 수 있다.
 - **질병 진단** :  손 뼈 변형, 골절 등 이상 탐지
