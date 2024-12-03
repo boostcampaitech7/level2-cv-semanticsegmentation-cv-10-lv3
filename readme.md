@@ -298,7 +298,7 @@ Final Ensemble
 
 X-ray 손 뼈 분할의 주요 과제를 해결하기 위해 다양한 증강 기법, 모델 아키텍처, 앙상블 기법을 적용했다. 특히, 원본 이미지 학습 모델 기반 Classwise Ensemble 기법은 손등 뼈와 같은 어려운 영역에서 성능 향상을 이끌었다. 또한, SOTA 같은 무거운 모델을 낮은 해상도로 학습하는 것보다 가벼운 모델을 높은 해상도로 학습하는 것이 본 대회 성능 향상에 매우 중요했음을 알게 되었다. 향후 연구에서는 도메인 지식을 활용한 더 정교한 전처리 및 후처리 기법을 적용하여 더욱 높은 성능을 목표로 할 것이다.
 
-<img src="https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a" alt="image" width="500"/>
+<img src="https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a" alt="image" width="800"/>
 
 ## 최종 성과
 
