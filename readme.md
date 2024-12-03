@@ -9,6 +9,42 @@
 - **의료 장비 제작** : 인공 관절, 임플란트 등의 맞춤 제작
 - **의료 교육** : 뼈 구조 학습 및 수술 시뮬레이션
 
+## Member
+<table>
+    <tr height="160px">
+        <td align="center" width="150px">
+            <a href="https://github.com/Ai-BT"><img height="110px" src="https://avatars.githubusercontent.com/u/97381138?v=4"/></a>
+            <br />
+            <a href="https://github.com/Ai-BT"><strong>김대환</strong></a>
+            <br />
+        </td>
+        <td align="center" width="150px">
+              <a href="https://github.com/SkyBlue-boy"><img height="110px"  src="https://avatars.githubusercontent.com/u/63849988?v=4"/></a>
+              <br />
+              <a href="https://github.com/SkyBlue-boy"><strong>박윤준</strong></a>
+              <br />
+        </td>
+        <td align="center" width="150px">
+              <a href="https://github.com/sweetie-orange"><img height="110px"  src="https://avatars.githubusercontent.com/u/97962649?v=4"/></a>
+              <br />
+              <a href="https://github.com/sweetie-orange"><strong>김현진</strong></a>
+              <br />
+        </td>
+        <td align="center" width="150px">
+              <a href="https://github.com/0seoYun"><img height="110px"  src="https://avatars.githubusercontent.com/u/102219161?v=4"/></a>
+              <br />
+              <a href="https://github.com/0seoYun"><strong>윤영서</strong></a>
+              <br />
+        </td>
+        <td align="center" width="150px">
+              <a href="https://github.com/jiy0-0nv"><img height="110px"  src="https://avatars.githubusercontent.com/u/128347728?v=4"/></a>
+              <br />
+              <a href="https://github.com/jiy0-0nv"><strong>정지윤</strong></a>
+              <br />
+        </td>
+    </tr>
+</table>  
+
 
 ## EDA
 
@@ -267,6 +303,6 @@ X-ray 손 뼈 분할의 주요 과제를 해결하기 위해 다양한 증강 �
 ## Reference
 
 - [1] Code for ICASSP 2020 paper ‘UNet 3+: A full-scale connected unet for medical image segmentation https://github.com/ZJUGiveLab/UNet-Version/tree/master
-- [2] Python wrapper to Philipp Krähenbühl's dense (fully connected) CRFs with gaussian edge potentials ****https://github.com/lucasb-eyer/pydensecrf
+- [2] Python wrapper to Philipp Krähenbühl's dense (fully connected) CRFs with gaussian edge potentials https://github.com/lucasb-eyer/pydensecrf
 - [3] Enze Xie et al., "SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers" arXiv:2105.15203v3 [[cs.CV](http://cs.cv/)] 28 Oct 2021
 - [4] Semantic Segmentation on ADE20K SOTA https://paperswithcode.com/sota/semantic-segmentation-on-ade20k
