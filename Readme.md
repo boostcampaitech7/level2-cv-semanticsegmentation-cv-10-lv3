@@ -303,7 +303,7 @@ KFOLD
 
 Final Ensemble
 
-최종 Clsswise Ensemble 97.54% 달성했다.
+최종 Classwise Ensemble으로 97.54%를 달성하였다.
 
 <img src="https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a" alt="image" width="800"/>
 
