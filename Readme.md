@@ -305,7 +305,7 @@ Final Ensemble
 
 최종 Classwise Ensemble으로 97.54%를 달성하였다.
 
-<img src="https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a" alt="image" width="800"/>
+<img src="[https://github.com/user-attachments/assets/09e4e2be-0ccc-490f-84ef-bc994add9d7a](https://github.com/user-attachments/assets/5cd66f32-c310-4ea5-8567-cb4ea3de607f)" alt="image" width="800"/>
 
 <br><br>
 
