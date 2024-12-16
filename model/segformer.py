@@ -1,7 +1,7 @@
 import torch
 from transformers import SegformerForSemanticSegmentation
 
-class SegFormer_B0(nn.Module):
+class SegFormer_B0(torch.nn.Module):
     def __init__(self, num_classes=29):
         super(SegFormer_B0, self).__init__()
         self.model = SegformerForSemanticSegmentation.from_pretrained(
