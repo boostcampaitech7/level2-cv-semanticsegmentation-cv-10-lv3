@@ -1,5 +1,6 @@
 import albumentations as A
 
+# final augmentation
 def get_train_transforms(image_size):
     return A.Compose([
         A.Resize(image_size, image_size),

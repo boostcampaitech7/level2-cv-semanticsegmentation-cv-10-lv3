@@ -1,4 +1,4 @@
-MODEL = "unet"
+MODEL = "conv"
 IMAGE_SIZE = 1024
 FOLD = 0
 RANDOM_SEED = 21
@@ -12,3 +12,4 @@ SAVED_DIR = f"./checkpoints/result"
 PT_NAME = f"{MODEL}_{IMAGE_SIZE}_{FOLD}.pt"
 LOG_NAME = f"log_{MODEL}_{IMAGE_SIZE}_{FOLD}"
 ALL_DATA = False
+SLIDING = False

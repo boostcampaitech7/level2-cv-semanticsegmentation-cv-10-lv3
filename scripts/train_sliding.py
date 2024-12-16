@@ -223,6 +223,7 @@ def collate_fn(batch):
     images = torch.stack(images)
     labels = torch.stack(labels)
     return images, labels
+
 train_loader = DataLoader(
     dataset=train_dataset, 
     batch_size=BATCH_SIZE,

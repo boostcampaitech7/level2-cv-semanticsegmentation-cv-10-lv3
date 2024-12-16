@@ -5,16 +5,17 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from utils import set_seed
+from utils import set_seed, collate_fn
 import config as cfg
 
 from dataset.XRayDataset import *
-from dataset.XRayDatasetAll import *
+from model import *
+from loss import *
 
 import segmentation_models_pytorch as smp
 
 from augmentation import get_train_transforms, get_val_transforms
-from trainer import train_model, BCE_Dice_loss
+from trainer import train_model
 
 
 def main():
@@ -25,8 +26,8 @@ def main():
     trian_tf = get_train_transforms(cfg.IMAGE_SIZE)
     val_tf = get_val_transforms(cfg.IMAGE_SIZE)
 
-    train_dataset = XRayDataset(is_train=True, transforms=trian_tf, fold=cfg.FOLD, all = cfg.ALL_DATA)
-    valid_dataset = XRayDataset(is_train=False, transforms=val_tf, fold=cfg.FOLD, all = cfg.ALL_DATA)
+    train_dataset = XRayDataset(is_train=True, transforms=trian_tf, fold=cfg.FOLD, all = cfg.ALL_DATA, crop=cfg.CROP_CHANGE)
+    valid_dataset = XRayDataset(is_train=False, transforms=val_tf, fold=cfg.FOLD, all = cfg.ALL_DATA, crop=cfg.CROP_CHANGE)
     
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -34,22 +35,30 @@ def main():
         shuffle=True,
         num_workers=2,
         drop_last=True,
+        **({"collate_fn": collate_fn} if cfg.SLIDING else {})
     )
     valid_loader = DataLoader(
         dataset=valid_dataset,
         batch_size=cfg.VAL_BATCH_SIZE,
         shuffle=False,
         num_workers=0,
-        drop_last=False
+        drop_last=False,
+        **({"collate_fn": collate_fn} if cfg.SLIDING else {})
     )
 
     # Init model
-    model = smp.UnetPlusPlus(
-        encoder_name="efficientnet-b7",
-        encoder_weights="imagenet",
-        in_channels=3,
-        classes=29,
-    ).cuda()
+    if cfg.MODEL == 'unetpp':
+        model = smp.UnetPlusPlus(
+            encoder_name="efficientnet-b7",
+            encoder_weights="imagenet",
+            in_channels=3,
+            classes=len(CLASSES),
+        ).cuda()
+    elif cfg.MODEL == 'conv':
+        model = UperNet_ConvNext_xlarge(num_classes=len(CLASSES))
+    elif cfg.MODEL == 'segformer':
+        model = SegFormer_B0(num_classes=len(CLASSES))
+    
 
     if cfg.MODEL.lower() == "fcn":
         model.classifier[4] = nn.Conv2d(512, len(CLASSES), kernel_size=1)
