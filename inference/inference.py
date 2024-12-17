@@ -2,17 +2,13 @@
 import os
 
 # external library
-import cv2
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
 import albumentations as A
-import ttach as tta
 
 # torch
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
 
 from dataset.XRayDataset import *
