@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch.cuda.amp import autocast, GradScaler
 import datetime
 from utils import log_to_file, save_model, dice_coef
-import config as cfg
+import configs.config as cfg
 from tqdm.auto import tqdm
 from XRayDataset import CLASSES
 

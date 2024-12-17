@@ -6,15 +6,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from utils import set_seed, collate_fn
-import config as cfg
+from configs import config as cfg
 
 from dataset.XRayDataset import *
-from model import *
+from models import *
 from loss import *
 
 import segmentation_models_pytorch as smp
 
-from augmentation import get_train_transforms, get_val_transforms
+from dataset.augmentation import get_train_transforms, get_val_transforms
 from trainer import train_model
 
 
@@ -58,7 +58,11 @@ def main():
         model = UperNet_ConvNext_xlarge(num_classes=len(CLASSES))
     elif cfg.MODEL == 'segformer':
         model = SegFormer_B0(num_classes=len(CLASSES))
-    
+    elif cfg.MODEL == 'deeplap':
+        model = DeepLabV3p(in_channels=3, num_classes=len(CLASSES))
+    else:
+        print("model not found.")
+        exit(0)
 
     if cfg.MODEL.lower() == "fcn":
         model.classifier[4] = nn.Conv2d(512, len(CLASSES), kernel_size=1)
