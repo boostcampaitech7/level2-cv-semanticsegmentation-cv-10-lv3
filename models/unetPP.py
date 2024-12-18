@@ -56,7 +56,6 @@ class UNetPlusPlus(nn.Module):
         self.seg_outputs = nn.ModuleList([nn.Conv2d(filters[0], out_ch, kernel_size=1, padding=0) for _ in range(4)])
 
     def forward(self, x):
-        # TODO: `__init__`에서 작성한 모듈을 이용하여 forward 함수를 작성하세요
         seg_outputs = []
         x0_0 = self.conv0_0(x)
         x1_0 = self.conv1_0(self.pool(x0_0))
