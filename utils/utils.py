@@ -3,7 +3,7 @@ import torch
 import random
 import numpy as np
 
-import config as cfg
+import configs.config as cfg
 pt_name = cfg.PT_NAME
 log_name = cfg.LOG_NAME
 dir_path = cfg.SAVED_DIR

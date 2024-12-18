@@ -14,8 +14,8 @@ from loss import *
 
 import segmentation_models_pytorch as smp
 
-from dataset.augmentation import get_train_transforms, get_val_transforms
-from trainer import train_model
+from augmentation import get_train_transforms, get_val_transforms
+from modelTrainer import train_model
 
 
 def main():

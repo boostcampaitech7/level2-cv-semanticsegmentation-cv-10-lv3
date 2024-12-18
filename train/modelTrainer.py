@@ -5,7 +5,7 @@ import datetime
 from utils import log_to_file, save_model, dice_coef
 import configs.config as cfg
 from tqdm.auto import tqdm
-from XRayDataset import CLASSES
+from dataset.XRayDataset import CLASSES
 
 
 def train_model(model, data_loader, val_loader, criterion, optimizer, scheduler):

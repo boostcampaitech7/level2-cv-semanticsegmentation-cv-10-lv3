@@ -14,7 +14,7 @@ import segmentation_models_pytorch as smp
 from dataset.XRayDataset import *
 from configs import config as cfg
 from models import *
-from dataset.tta import *
+from tta import *
 
 
 def main():
